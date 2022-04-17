@@ -1,0 +1,19 @@
+-------------------------------------------
+--- Welcome to <unnamed_rocket_project> ---
+-------------------------------------------
+
+Overarching goal: launch a liquid fueled rocket to an altitude of 5 Kilometers 
+Fuel/Ox: tentatively choose LOX/Ethanol (likely cut with water) 
+
+Baseline engine - 500 psi chamber pressure; 500 lbf thrust
+
+
+04/11/21 Notes: 
+Created vehicle sizing sheet: https://docs.google.com/spreadsheets/d/1_JpSu5tf8uLEPQL55E6V6bl5wYNb7TbPpZ7GwXi8rC0/edit?usp=sharing
+Rough 1D trajectory sim ~6.5km with loosey goosey 0.75 drag coeff - need to ultimately sim in open rocket
+
+ballpark ISP 230 - 250 sec 
+assume 20% injector stiffness
+
+TODO:
+isentropic blowdown - what volume of pressurant is needed
