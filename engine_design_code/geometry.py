@@ -52,7 +52,7 @@ def define_contour(chamber,L_star,nozl_ha,chamber_ha,
             contour.iat[i,1] = contour.iat[i-1,1]+np.round(dr,rnd)
 
     contour['eps'] = [np.round(np.pi*(contour.at[i,'r']**2)/chamber.At,rnd) for i in range(len(x_coords))]
-    i_t = int(contour[contour['eps']==1.0].index[0]) #throat index
+    i_t = npts*2-2 #throat index
     contour['regime'] = np.zeros(len(x_coords))
 
     for i in range(len(x_coords)):
@@ -74,6 +74,21 @@ def define_contour(chamber,L_star,nozl_ha,chamber_ha,
         plt.show()
 
     return contour,i_t
+
+def plot_chamber_param(chamber,param,param_units):
+    fig1, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True)
+    ax1.plot(chamber['x'],chamber['r'],c='k',lw=2)
+    ax1.set(ylim=(0.0, max(chamber['r'] * 1.25)))
+
+    ax2.plot(chamber['x'],chamber[param],c='r',lw=2)
+
+    ax1.axis('equal')
+    ax2.set_xlabel('x [mm]')
+    ax1.set_ylabel('r [mm]')
+    ax2.set_ylabel(f'{param}, [{param_units}]')
+
+    plt.show()
+    return
 
 class chamber_geo:
     def __init__(self,At,Rt,Ac,Rc,Ae,Re):

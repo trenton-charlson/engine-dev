@@ -6,11 +6,13 @@ author: tcharlson
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from rocketcea.cea_obj import CEA_Obj as CEA_Obj_english
 from rocketcea.cea_obj_w_units import CEA_Obj
 
-from geometry import chamber_geo, define_contour
-from nozzle_thermo import chamber_thermo_calcs
+from geometry import chamber_geo, define_contour, plot_chamber_param
+from nozzle_thermo import chamber_thermo_calcs, HT_1D_solve_bartz, t_adiabatic_wall
+from ethanol_props import get_ethanol_props_SI
 
 #import gas_dynamics as gd
 
@@ -23,9 +25,10 @@ fuel = propellant("Ethanol")
 ox = propellant("LOX")
 ### PERFORMANCE PARAMS ###
 Pc = 35.0 #bar
+Pc_pa = Pc * 10**5 # chamber pressure in Pascals
 Pe = 1.01325 #bar
 thrust = 2500 #newton
-MR = 1.6
+MR = 1.4
 eta_cstar = 0.9 # guess
 R_const = 8.314462*10**3 #J/K.mol
 pressure_ratio = Pe/Pc
@@ -33,12 +36,15 @@ print(f'pressure_ratio = {pressure_ratio}')
 print(f'Pc/Pe = {Pc/Pe}')
 
 ### GEOMETRIC PARAMS ###
-fac_CR = 9.0 #contraction ratio
+fac_CR = 10.0 #contraction ratio
 chamber_ha = 30.0 #degrees, chamber half angle
 nozzle_ha = 15.0 #degrees, nozzle half angle; conical nozzle
-L_star = 1.5 #meters - http://mae-nas.eng.usu.edu/MAE_5540_Web/propulsion_systems/section6/section.6.1.pdf guess for now
+L_star = 2.0 #meters - http://mae-nas.eng.usu.edu/MAE_5540_Web/propulsion_systems/section6/section.6.1.pdf guess for now
+npts = 100 #number of points to define each contour section
 
-FULL_OUTPUT = True
+FULL_OUTPUT = False
+BAR = True
+g = 9.81 # gravitational accel, [m/s**2]
 
 
 combustor = CEA_Obj(oxName=ox.name, fuelName=fuel.name,
@@ -92,10 +98,16 @@ cstar_corr = eta_cstar*cstar_ideal
 print(f'C*, ideal = {cstar_ideal} m/s - eta_C* = {eta_cstar}\n'
       f'C*, corr = {cstar_corr} m/s')
 
-mdot_ideal = thrust/v_e_ideal
-print(f'mdot_ideal = {mdot_ideal} kg/s\n')
+mdot_ideal_total = thrust/v_e_ideal
+print(f'mdot_ideal_total = {mdot_ideal_total} kg/s\n')
 
-A_t = (mdot_ideal/(Pc*10**5))*np.sqrt((R_specific*T_c)/(k*((2/(k+1))**((k+1)/(k-1)))))
+mdot_ox_ideal = (MR/(1+MR))
+mdot_fuel_ideal = mdot_ideal_total - mdot_ox_ideal
+print(f'mdot_f (ideal) {mdot_fuel_ideal} kg/s')
+print(f'mdot_o (ideal) {mdot_ox_ideal} kg/s')
+
+
+A_t = (mdot_ideal_total/(Pc*10**5))*np.sqrt((R_specific*T_c)/(k*((2/(k+1))**((k+1)/(k-1)))))
 #A_t_cm = A_t*(100**2)
 A_t_mm = A_t*(1000**2)
 R_t_mm = np.sqrt(A_t_mm/np.pi)
@@ -122,8 +134,51 @@ print(f'sanic {combustor.get_SonicVelocities(Pc=Pc,MR=MR,eps=opt_expansion)}')
 print('#### CALCULATING CHAMBER GEOMETRIC PROPERTIES ####\n')
 chamber_obj = chamber_geo(A_t_mm, R_t_mm, A_c_mm, R_c_mm, A_e_mm, R_e_mm)
 chamber,i_t = define_contour(chamber_obj, L_star, nozzle_ha, chamber_ha)
-print(chamber.index)
 chamber = chamber_thermo_calcs(chamber,k,R_specific,T_c,Pc)
+
+# seed heat transfer analysis
+mu = 1.0145*0.0001 # millipoise -> Pa.s
+Cp = 4.17*10**3 # J/kg.K (need to convert)
+Pr = 0.55 # avg from CEA output with lower bias
+cstar = 1724.3 # m/s - CEA output
+RC_throat = 0.015 # radius of curvature at throat - spoof 15mm for now
+
+t_w = 0.001 # wall thickness, meters
+cond_w = 370 # copper, W/m.K
+
+eps = 1.0 # expansion ratio A/At - spoofed in for throat
+M = 1.0 # mach no. for throat
+
+C = 0.026 # Bartz constant
+
+# compute 4x bartz constants which do not vary over nozzle
+b1 = (C/(D_t_mm/1000)**0.2) # first constant in bartz correlation C/Dt**0.2 - diameter correlation
+b2 = ((mu**0.2)*Cp)/(Pr**0.6) # 2nd constant - mu**0.2.Cp/Pr**0.6 - transport props
+b3 = (Pc_pa/cstar)**0.8 # 3rd constant - Pc correlation
+b4 = ((D_t_mm/1000)/RC_throat)**0.1 # 4th constant - throat curvature correction
+
+T_aw = t_adiabatic_wall(T_c,Pr,M,k)
+
+q_thrt,T_wg_throat,T_wc_throat = HT_1D_solve_bartz(eps,M,T_c,T_aw,k,b1,b2,b3,b4,t_w,cond_w)
+print(q_thrt,T_wg_throat,T_wc_throat)
+
+### Do heat transfer ###
+for i in range(len(chamber.index))[::-1]:
+    # NOTE: iterate thru in reverse
+    M = chamber.at[i,'mach']
+    eps = chamber.at[i,'eps']
+    T_aw = t_adiabatic_wall(T_c,Pr,M,k)
+    chamber.at[i,'T_aw'] = T_aw
+
+    q,T_wg,T_wc = HT_1D_solve_bartz(eps,M,T_c,T_aw,k,b1,b2,b3,b4,t_w,cond_w)
+
+    chamber.at[i,'q_wg'] = q
+    chamber.at[i,'T_wg'] = T_wg
+    chamber.at[i,'T_wc'] = T_wc
+
+
+plot_chamber_param(chamber,'q_wg','W/m**2')
+plot_chamber_param(chamber,'T_wc','K')
 
 test=5
 test=6
@@ -132,6 +187,5 @@ if FULL_OUTPUT:
     print(combustor_std.get_full_cea_output(Pc=Pc, MR=MR,
                                             pc_units='bar',
                                             PcOvPe=1/pressure_ratio))
-
 
 
