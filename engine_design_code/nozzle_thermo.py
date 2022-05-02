@@ -5,6 +5,7 @@ author: tcharlson
 """
 import numpy as np
 import gas_dynamics as gd
+import matplotlib.pyplot as plt
 from ethanol_props import get_ethanol_props_SI
 
 def chamber_thermo_calcs(chamber,k,R_specific,Tc,Pc):
@@ -28,38 +29,20 @@ def t_p_from_mach(T0,P0,M,k):
     P = P0/((1+0.5*(k-1)*M**2)**(k/(k-1)))
     return T,P
 
-def HT_1D_solve_bartz(eps,M,T0,T_aw,k,b1,b2,b3,b4,
-                      t_w,cond_w,
-                      convergence = 0.005,
-                      Tguess = 700):
 
-    """
-    1D heat transfer analysis at given station, given input conditions
 
-    eps = Area Ratio @ current station
-    M = mach number @ current station
-    T0 = combustor stagnation temp [K] #~3200 for current design
-    T_aw = combustor adiabatic wall temp, [K]
-    b1..4 = bartz correlation paramters, computed as constants from stagnation conditions
+def func_bartz_root_find(X, *data):
+    #X[0] = T_wg
+    #X[1] = T_wc
+    #X[2] = q
 
-    t_w = wall thickness [m]
-    cond_w = wall conductivity [W/m.K] # 370 for copper (lowball)
+    t_w, cond_w, bartz_mult, T0, T_c_i, h_c, T_aw, M, k = data
 
-    Tguess = 700; seed temperature to start iteration
-    """
-    # Prepare bartz calculation parameters
-    AR_factor = (1/eps)**0.9 # expansion factor, (A*/A) ** 0.9
-    b_const = b1*b2*b3*b4 # calculate lumped bartz constant
-    omega = bartz_correction_factor(T0,Tguess,M,k)
 
-    T_wg = Tguess # for now, assume whatever was guessed
+    return [X[2] - h_c*(X[1] - T_c_i),
+            X[2] - bartz_mult*bartz_correction_factor(T0, X[0], M, k)*(T_aw - X[0]),
+            X[2] - (cond_w/t_w)*(X[0] - X[1])]
 
-    h_wg = b_const*AR_factor*omega
-    q_wg = h_wg*(T_aw - T_wg)
-
-    T_wc = T_wg - (q_wg*t_w)/cond_w
-
-    return q_wg,T_wg,T_wc
 
 def bartz_correction_factor(T0,Twg,M,k,
                             omega=0.6):
@@ -86,6 +69,42 @@ def t_adiabatic_wall(T0,Pr,M,k):
     denominator = 1 + kf*M**2
 
     return T0*(numerator/denominator)
+
+def gnielinski_calc(f,Re,Pr):
+    # return nusselt number as result of Gnielinski correlation
+    # Incorpera pg. 515
+
+    numerator = (f/8)*(Re-1000)*Pr
+    denominator = 1 + ((12.7*(f/8)**0.5)*((Pr**(2/3))-1))
+
+    return numerator/denominator
+
+def plot_chamber_thermo(chamber):
+    fig1, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, sharex=True)
+    ax1.plot(chamber['x'], chamber['r'], c='k', lw=2)
+    ax1.set(ylim=(0.0, max(chamber['r'] * 1.25)))
+    ax11 = ax1.twinx()
+    ax11.plot(chamber['x'], chamber['q_tot']/10**7, c='r', lw=2, label='q_tot [MW/m^2]')
+
+    # plot temps:
+    ax2.plot(chamber['x'], chamber['T_c_i'], c='b', lw=2,label='T_c')
+    ax2.plot(chamber['x'], chamber['T_wg'], c='r',lw=2,label='T_wg')
+    ax2.plot(chamber['x'], chamber['T_wc'], c='cyan',lw=2,label='T_wc')
+
+    ax3.plot(chamber['x'], chamber['t_wall'], label='t_wall')
+    ax3.plot(chamber['x'], chamber['w_chan'], label='w_chan')
+    ax3.plot(chamber['x'], chamber['d_chan'], label='d_chan')
+
+    ax1.axis('equal')
+    ax11.legend()
+    ax2.legend()
+    ax3.legend()
+    ax3.set_xlabel('x - [mm]')
+    ax1.set_ylabel('r - [mm]')
+    ax2.set_ylabel(f'Regen Temps - [K]')
+    ax3.set_ylabel(f'Regen Geo - [mm]')
+    fig1.suptitle('Regen Cooling Properties')
+    return
 
 
 

@@ -3,18 +3,21 @@ Functions for calculating thermodynamic properties of ethanol
 
 author: tcharlson
 """
-
-from CoolProp.CoolProp import PropsSI
+import CoolProp.CoolProp as CP
 
 def get_ethanol_props_SI(T,P,
-                         BAR=True):
+                         BAR=True,MIX=0.75):
     if BAR:
         P = P*10**5 # convert to Pa for coolprop input
 
-    rho = PropsSI('D','T',T,'P',P,'Ethanol')
-    h = PropsSI('H','T',T,'P',P,'Ethanol')
-    cp = PropsSI('CPMASS','T',T,'P',P,'Ethanol')
-    cond = PropsSI('CONDUCTIVITY','T',T,'P',P,'Ethanol')
-    visc = PropsSI('VISCOSITY','T',T,'P',P,'Ethanol')
+    CP.apply_simple_mixing_rule('Ethanol','Water','linear')
+    CP.set_config_bool(CP.OVERWRITE_BINARY_INTERACTION, True)
+    FID = f'WATER[{1-MIX}]&ETHANOL[{MIX}]'
 
-    return rho, h, cp, cond, visc
+    rho = CP.PropsSI('D','T',T,'P',P,FID)
+    #h = PropsSI('H','T|supercritical_liquid',T,'P',P,FID)
+    cp = CP.PropsSI('CPMASS','T',T,'P',P,FID)
+    cond = CP.PropsSI('CONDUCTIVITY','T',T,'P',P,FID)
+    visc = CP.PropsSI('VISCOSITY','T',T,'P',P,FID)
+
+    return rho, cp, cond, visc

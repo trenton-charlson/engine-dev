@@ -7,10 +7,11 @@ author: tcharlson
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import os
 
 
 def define_contour(chamber,L_star,nozl_ha,chamber_ha,
-                   rnd=2,npts=100,PLOT=True):
+                   rnd=3,npts=25,PLOT=True):
     """
 
     :param chamber:
@@ -30,36 +31,54 @@ def define_contour(chamber,L_star,nozl_ha,chamber_ha,
     total_l = barrel_l+conv_l+nozl_l
     print(f'Total Combustor Length = {total_l} mm')
 
-    x_coords = np.unique(np.round((np.concatenate((np.linspace(0.0,barrel_l,num=npts),
-                                                   np.linspace(barrel_l,barrel_l+conv_l,num=npts),
-                                                   np.linspace(barrel_l+conv_l,total_l,num=npts)))),rnd))
+    x_coords = np.unique([np.linspace(0.0,barrel_l,num=npts),
+                                          np.linspace(barrel_l,barrel_l+conv_l,num=npts),
+                                          np.linspace(barrel_l+conv_l,total_l,num=npts)])
+    #print(x_coords)
 
     #print(x_coords)
     contour = pd.DataFrame(index=np.arange(len(x_coords)))
+    print(contour)
     contour['x'] = x_coords
     contour['r'] = np.zeros(len(x_coords))
+    contour['theta'] = np.zeros(len(x_coords))
 
     for i in range(len(x_coords)):
-        if i<npts: #chamber barrel
-            contour.iat[i,1] = np.round(chamber.Rc,rnd)
-        elif (i>=npts and i<((npts*2)-1)):
-            dx = x_coords[i] - x_coords[i-1]
+        if i<=npts: #chamber barrel
+            contour.at[i,'r'] = chamber.Rc
+
+        elif (i>npts-1 and i<(npts*2)-2):
+            # converging section
+            dx = x_coords[i+1] - x_coords[i]
             dr = dx*np.tan(np.deg2rad(chamber_ha))
-            contour.iat[i,1] = contour.iat[i-1,1]-np.round(dr,rnd)
-        else:
-            dx = x_coords[i] - x_coords[i - 1]
+            contour.at[i,'r'] = contour.at[i-1,'r']-dr
+            contour.at[i,'theta'] = chamber_ha # wall angle
+        elif i == npts*2-2:
+            #we at the throat boiiiii
+            contour.at[i,'r'] = chamber.Rt
+            contour.at[i,'theta'] = 0.0
+        elif (i>(npts*2)-2 and i<(npts*3)-3):
+            # nozzle segment
+            dx = x_coords[i+1] - x_coords[i]
             dr = dx*np.tan(np.deg2rad(nozl_ha))
-            contour.iat[i,1] = contour.iat[i-1,1]+np.round(dr,rnd)
+            contour.at[i,'r'] = contour.at[i-1,'r']+dr
+            contour.at[i,'theta'] = nozl_ha # wall angle
+        elif i == (npts*3)-3:
+            #at exit
+            contour.at[i,'r'] = chamber.Re
+            contour.at[i,'theta'] = nozl_ha
 
     contour['eps'] = [np.round(np.pi*(contour.at[i,'r']**2)/chamber.At,rnd) for i in range(len(x_coords))]
+    contour['r'] = np.round(contour['r'],rnd)
+    contour['x'] = np.round(contour['x'],rnd)
     i_t = npts*2-2 #throat index
     contour['regime'] = np.zeros(len(x_coords))
 
     for i in range(len(x_coords)):
         if i>i_t:
-            contour.iat[i,3] = 2
+            contour.at[i,'regime'] = 2
 
-    contour.iat[i_t,3] = 1
+    contour.at[i_t,'regime'] = 1 #set throat regime to 1.0
     if PLOT:
         fig1,(ax1,ax2) = plt.subplots(nrows=2,ncols=1,sharex=True)
         ax1.plot(contour['x'],contour['r'],c='k',lw=2)
@@ -89,6 +108,16 @@ def plot_chamber_param(chamber,param,param_units):
 
     plt.show()
     return
+
+def import_regen_geo(chamber,
+                     fn='chamber_mod.csv',
+                     parms=['t_wall','n_chan','w_chan','d_chan']):
+    # function to add regen circuit design for chamber.
+    chamber_regen = pd.read_csv(os.path.join(os.getcwd(),'output',fn))
+    for parm in parms:
+        chamber[parm] = chamber_regen[parm]
+    return chamber
+
 
 class chamber_geo:
     def __init__(self,At,Rt,Ac,Rc,Ae,Re):
