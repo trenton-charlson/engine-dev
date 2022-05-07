@@ -65,10 +65,10 @@ def _1D_rocket_traj(mwet,mdry,mdot,thrust,A_cs,
 
     return traj
 
-mwet = 57.5 #kg
-mdry = 43.5 #kg
-mdot = 0.93 #kg/s
-thrust = 2224.0 #Newton
+mwet = 73.49#kg
+mdry = 52.52 #kg
+mdot = 1.05 #kg/s
+thrust = 2250.0 #Newton
 A_cs = np.pi*0.0654**2 # 5.15 IN DIAMETER BODY; 5" std tube
 
 traj = _1D_rocket_traj(mwet, mdry, mdot, thrust, A_cs)

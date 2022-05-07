@@ -3,10 +3,12 @@ Functions for calculating thermal properties in combustor based on geometry
 
 author: tcharlson
 """
+import os
+
 import numpy as np
 import gas_dynamics as gd
 import matplotlib.pyplot as plt
-from ethanol_props import get_ethanol_props_SI
+import yaml
 
 def chamber_thermo_calcs(chamber,k,R_specific,Tc,Pc):
     product_gas = gd.fluid(name='product-gas',gamma=k,R=R_specific,units='J / kg-K')
@@ -29,20 +31,33 @@ def t_p_from_mach(T0,P0,M,k):
     P = P0/((1+0.5*(k-1)*M**2)**(k/(k-1)))
     return T,P
 
-
-
 def func_bartz_root_find(X, *data):
     #X[0] = T_wg
     #X[1] = T_wc
     #X[2] = q
 
-    t_w, cond_w, bartz_mult, T0, T_c_i, h_c, T_aw, M, k = data
-
+    t_w, cond_w, bartz_mult, T0, T_c_i, h_c, T_aw, M, k, R = data
 
     return [X[2] - h_c*(X[1] - T_c_i),
-            X[2] - bartz_mult*bartz_correction_factor(T0, X[0], M, k)*(T_aw - X[0]),
+            X[2] - (1/(R+1/(bartz_mult*bartz_correction_factor(T0, X[0], M, k))))*(T_aw - X[0]),
             X[2] - (cond_w/t_w)*(X[0] - X[1])]
 
+
+def soot_thermal_resistance(eps,regime):
+    if regime == 0.0:
+        # subsonic
+        if eps>1.71:
+            R = 0.000526667590690191
+        else:
+            R = 0.000194337986*eps + 0.000177914
+    elif regime == 1.0:
+        # throat
+        R = 0.000384911850873474
+    else:
+        # supersonic
+        R = 5.20899E-05*eps + 0.00033634375
+
+    return R
 
 def bartz_correction_factor(T0,Twg,M,k,
                             omega=0.6):
@@ -79,8 +94,24 @@ def gnielinski_calc(f,Re,Pr):
 
     return numerator/denominator
 
+
+def load_regen_geometry(chamber,fn):
+    with open(os.path.join(os.getcwd(),'CONFIG',fn)) as f:
+        regen_config = yaml.load(f, Loader=yaml.FullLoader)
+
+    for i in chamber.index:
+        for sect in regen_config.keys():
+            x = round(chamber.at[i,'x'],2)
+            if (x >= regen_config[sect]['start_x'] and x <= regen_config[sect]['end_x']):
+                chamber.at[i,'n_chan'] = regen_config[sect]['n_chan']
+                chamber.at[i,'w_chan'] = regen_config[sect]['w_chan']
+                chamber.at[i,'d_chan'] = regen_config[sect]['d_chan']
+                chamber.at[i,'t_wall'] = regen_config[sect]['t_wall']
+
+    return chamber
+
 def plot_chamber_thermo(chamber):
-    fig1, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, sharex=True)
+    fig1, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(nrows=3, ncols=2, figsize=(16,9), sharex=True)
     ax1.plot(chamber['x'], chamber['r'], c='k', lw=2)
     ax1.set(ylim=(0.0, max(chamber['r'] * 1.25)))
     ax11 = ax1.twinx()
@@ -91,19 +122,38 @@ def plot_chamber_thermo(chamber):
     ax2.plot(chamber['x'], chamber['T_wg'], c='r',lw=2,label='T_wg')
     ax2.plot(chamber['x'], chamber['T_wc'], c='cyan',lw=2,label='T_wc')
 
-    ax3.plot(chamber['x'], chamber['t_wall'], label='t_wall')
-    ax3.plot(chamber['x'], chamber['w_chan'], label='w_chan')
-    ax3.plot(chamber['x'], chamber['d_chan'], label='d_chan')
+    ax3.plot(chamber['x'], chamber['mach'], c='r', lw=2, label='Mach Number - [-]')
+    ax31 = ax3.twinx()
+    ax31.plot(chamber['x'], chamber['T_aw'], label='Adiabatic Wall Temp [K]')
+
+    ax4.plot(chamber['x'], chamber['t_wall'], label='t_wall')
+    ax4.plot(chamber['x'], chamber['w_chan'], label='w_chan')
+    ax4.plot(chamber['x'], chamber['d_chan'], label='d_chan')
+    ax41 = ax4.twinx()
+    ax41.plot(chamber['x'], chamber['u_c'], c='k', ls='-', label='Coolant Velocity - [m/s]')
+
+    ax5.plot(chamber['x'], chamber['Re_c'], label='Coolant Reynolds Number')
+
+    ax6.plot(chamber['x'], chamber['rho_c'], label='Coolant Density [kg/m**3]')
+
 
     ax1.axis('equal')
     ax11.legend()
+    ax31.legend()
+    ax41.legend()
     ax2.legend()
     ax3.legend()
+    ax4.legend()
+    ax5.legend()
+    ax6.legend()
     ax3.set_xlabel('x - [mm]')
     ax1.set_ylabel('r - [mm]')
     ax2.set_ylabel(f'Regen Temps - [K]')
     ax3.set_ylabel(f'Regen Geo - [mm]')
+
+    ax41.set_ylabel(f'Coolant Velocity - [m/s]')
     fig1.suptitle('Regen Cooling Properties')
+    plt.tight_layout
     return
 
 

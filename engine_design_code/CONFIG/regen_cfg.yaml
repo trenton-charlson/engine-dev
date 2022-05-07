@@ -1,0 +1,15 @@
+barrel:
+  start_x: 0.0
+  end_x: 162.60
+  n_chan: 60
+  w_chan: 0.5
+  d_chan: 0.5
+  t_wall: 1.5
+nozl:
+  start_x: 162.61
+  end_x: 266.74
+  n_chan: 60
+  w_chan: 0.5
+  d_chan: 0.5
+  t_wall: 1.5
+

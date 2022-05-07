@@ -11,7 +11,7 @@ import os
 
 
 def define_contour(chamber,L_star,nozl_ha,chamber_ha,
-                   rnd=3,npts=25,PLOT=True):
+                   rnd=3,npts=50,PLOT=True):
     """
 
     :param chamber:
@@ -38,10 +38,13 @@ def define_contour(chamber,L_star,nozl_ha,chamber_ha,
 
     #print(x_coords)
     contour = pd.DataFrame(index=np.arange(len(x_coords)))
-    print(contour)
     contour['x'] = x_coords
     contour['r'] = np.zeros(len(x_coords))
     contour['theta'] = np.zeros(len(x_coords))
+
+    print(f'Barrel Length = {barrel_l} mm')
+    print(f'Converging Length = {conv_l} mm')
+    print(f'Nozzle Length = {nozl_l} mm')
 
     for i in range(len(x_coords)):
         if i<=npts: #chamber barrel
@@ -78,7 +81,8 @@ def define_contour(chamber,L_star,nozl_ha,chamber_ha,
         if i>i_t:
             contour.at[i,'regime'] = 2
 
-    contour.at[i_t,'regime'] = 1 #set throat regime to 1.0
+    contour.at[i_t, 'regime'] = 1  # set throat regime to 1.0
+
     if PLOT:
         fig1,(ax1,ax2) = plt.subplots(nrows=2,ncols=1,sharex=True)
         ax1.plot(contour['x'],contour['r'],c='k',lw=2)
@@ -108,16 +112,6 @@ def plot_chamber_param(chamber,param,param_units):
 
     plt.show()
     return
-
-def import_regen_geo(chamber,
-                     fn='chamber_mod.csv',
-                     parms=['t_wall','n_chan','w_chan','d_chan']):
-    # function to add regen circuit design for chamber.
-    chamber_regen = pd.read_csv(os.path.join(os.getcwd(),'output',fn))
-    for parm in parms:
-        chamber[parm] = chamber_regen[parm]
-    return chamber
-
 
 class chamber_geo:
     def __init__(self,At,Rt,Ac,Rc,Ae,Re):

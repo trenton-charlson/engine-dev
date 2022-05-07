@@ -1,0 +1,31 @@
+%     newColumn = [];
+%     for j = 1:numel(AR_Nozzle) 
+%         interpUpper = interp1(nozzleProps_working(:,2)',nozzleProps_working(:,i)',AR_Nozzle(throatInd+tCorr),'linear')
+%         interpLower = interp1(nozzleProps_working(:,2)',nozzleProps_working(:,i)',AR_Nozzle(throatInd-tCorr),'linear')
+%         if abs(throatInd-j) <= tCorr
+%             %So here's the deal - since M = 1 at the throat there is a
+%             %shock and it leads to local discontinuities. It creates flat
+%             %regions in the plot during interpolation as seen in
+%             %FigureD.1_ThroatInterpError.png. To combat this, code linearly
+%             %interpolates to throat set point when it's within tCorr points
+%             %of throat index in contour
+%             query = AR_Nozzle(j)
+%             if j < throatInd
+%                 AR1 = [AR_Nozzle(throatInd-tCorr), 1]; %Establish interpolation AR points
+%                 PR1 = [interpLower, nozzleProps_working(throatInd1,i)]
+%                 newData = interp1(AR1,PR1,AR_Nozzle(j),'linear')
+%                 newColumn = [newColumn;newData];
+%             elseif j > throatInd
+%                 AR1 = [nozzleProps_working(throatInd1,2),AR_Nozzle(throatInd+tCorr1)] %Establish interpolation AR points
+%                 PR1 = [nozzleProps_working(throatInd1,i),interpUpper]
+%                 newData = interp1(AR1,PR1,AR_Nozzle(j),'linear')
+%                 newColumn = [newColumn;newData];
+%             else
+%                 newColumn = [newColumn;nozzleProps_working(throatInd1,i)]; %Add data for throat point
+%             end
+%         else
+%             newData = interp1(nozzleProps_working(:,2)',nozzleProps_working(:,i)',AR_Nozzle(j),'linear');
+%             newColumn = [newColumn;newData];
+%         end
+%     end
+%     nozzleProps = [nozzleProps,newColumn];

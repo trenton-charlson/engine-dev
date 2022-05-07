@@ -9,106 +9,70 @@ import os
 
 import numpy as np
 from scipy.optimize import fsolve
-import pandas as pd
-import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+
 from rocketcea.cea_obj import CEA_Obj as CEA_Obj_english
 from rocketcea.cea_obj_w_units import CEA_Obj
 
-from geometry import chamber_geo, define_contour, plot_chamber_param, import_regen_geo
-from nozzle_thermo import chamber_thermo_calcs, t_adiabatic_wall, gnielinski_calc, plot_chamber_thermo, func_bartz_root_find
-from ethanol_props import get_ethanol_props_SI
+from geometry import chamber_geo, define_contour, plot_chamber_param
+from nozzle_thermo import chamber_thermo_calcs, t_adiabatic_wall, gnielinski_calc, plot_chamber_thermo, \
+                          func_bartz_root_find, load_regen_geometry, soot_thermal_resistance
 
-#import gas_dynamics as gd
+from ethanol_props import get_ethanol_props_SI
+from kerosene_props import get_jet_a_properties
+
+from engine_sizing_run import size_combustor, propellant
+
+from constants import R_const, g
 
 ### DEFINE TOP LEVEL PARAMETERS ###
-class propellant:
-    def __init__(self,name):
-        self.name = name
-
-fuel = propellant("Ethanol")
+fuel = propellant("Kerosene")
 ox = propellant("LOX")
+
 ### PERFORMANCE PARAMS ###
-Pc = 35.0 #bar
+Pc = 20.0 #bar
 Pc_pa = Pc * 10**5 # chamber pressure in Pascals
 Pe = 1.01325 #bar
-thrust = 2500 #newton
-MR = 1.4
+thrust = 2250 #newton ~500lbf
+MR = 1.8
 eta_cstar = 0.9 # guess
-R_const = 8.314462*10**3 #J/K.mol
 pressure_ratio = Pe/Pc
 print(f'pressure_ratio = {pressure_ratio}')
 print(f'Pc/Pe = {Pc/Pe}')
 
+ffc_pct = 0.1 # % FFC Mass fraction
+
 ### GEOMETRIC PARAMS ###
-fac_CR = 10.0 #contraction ratio
+fac_CR = 8.0 #contraction ratio
 chamber_ha = 30.0 #degrees, chamber half angle
 nozzle_ha = 15.0 #degrees, nozzle half angle; conical nozzle
-L_star = 2.0 #meters - http://mae-nas.eng.usu.edu/MAE_5540_Web/propulsion_systems/section6/section.6.1.pdf guess for now
+L_star = 1.5 #meters - http://mae-nas.eng.usu.edu/MAE_5540_Web/propulsion_systems/section6/section.6.1.pdf guess for now
 npts = 100 #number of points to define each contour section
 
 FULL_OUTPUT = False
 BAR = True
-g = 9.81 # gravitational accel, [m/s**2]
+DEBUG = False
 
-
-combustor = CEA_Obj(oxName=ox.name, fuelName=fuel.name,
-                    cstar_units="m/s",
-                    pressure_units="Bar",
-                    temperature_units="K",
-                    sonic_velocity_units="m/s",
-                    enthalpy_units="kJ/kg",
-                    density_units="kg/m^3",
-                    specific_heat_units="kJ/kg-K",
-                    viscosity_units="poise",
-                    thermal_cond_units="W/cm-degC",
-                    fac_CR=fac_CR)
-
-combustor_std = CEA_Obj_english(oxName=ox.name, fuelName=fuel.name,
-                                fac_CR=fac_CR)
-
-#props_out = pd.DataFrame(index=MR_sweep)
-
-print(f'Target Thrust: {thrust} N,\n'
-      f'Pc = {Pc} Bar\n'
-      f'MR = {MR} [-]\n'
-      f'fac_CR = {fac_CR} [-]\n')
-
-(mw_c,k_c) = combustor.get_Chamber_MolWt_gamma(Pc=Pc, MR=MR, eps=40)
-(mw_t,k_t) = combustor.get_Throat_MolWt_gamma(Pc=Pc, MR=MR, eps=40)
-print(f'CHAMBER - mw: {mw_c}, k: {k_c}')
-print(f'THROAT - mw: {mw_t}, k: {k_t}')
-
-k = (k_c+k_t)/2 #average gas constant
-mw = (mw_c+mw_t)/2 #avg molecular weight
-print(f'K_avg = {k}')
-
-opt_expansion = 1/((((k+1)/2)**(1/(k-1))) * (pressure_ratio**(1/k)) * np.sqrt(((k+1)/(k-1))*(1-(pressure_ratio**((k-1)/k)))))
-print(f'Optimum Expansion: {opt_expansion}')
-
-T_c = combustor.get_Tcomb(Pc=Pc, MR=MR)
-print(f'T_comb = {T_c} K')
-
-T_t = 2*T_c/(k+1)
-print(f'T_t = {T_t} K')
-
-R_specific = R_const/mw
-print(f'R_specific = {R_specific} J/kg.K')
-
-v_e_ideal = np.sqrt(((2*k)/(k-1))*R_specific*T_c*(1-(pressure_ratio**((k-1)/k))))
-print(f'V_e, ideal = {v_e_ideal} m/s')
+eng, T_c, T_t, R_specific, k, opt_expansion, v_e_ideal = size_combustor(Pc,MR,thrust,fac_CR,ox,fuel,pressure_ratio)
 
 cstar_ideal = np.sqrt(k*R_specific*T_c)/(k*np.sqrt((2/(k+1))**((k+1)/(k-1))))
 cstar_corr = eta_cstar*cstar_ideal
 print(f'C*, ideal = {cstar_ideal} m/s - eta_C* = {eta_cstar}\n'
       f'C*, corr = {cstar_corr} m/s')
 
+print('\n### COMBUSTOR MASS FLOWS ###')
 mdot_ideal_total = thrust/v_e_ideal
 print(f'mdot_ideal_total = {mdot_ideal_total} kg/s\n')
 
-mdot_ox_ideal = (MR/(1+MR))
+mdot_ox_ideal = (MR/(1+MR))*mdot_ideal_total
 mdot_fuel_ideal = mdot_ideal_total - mdot_ox_ideal
-print(f'mdot_f (ideal) {mdot_fuel_ideal} kg/s')
-print(f'mdot_o (ideal) {mdot_ox_ideal} kg/s')
+mdot_fuel_regen = mdot_fuel_ideal*(1+ffc_pct)
+print(f'mdot_f (ideal) = {mdot_fuel_ideal} kg/s')
+print(f'mdot_f (regen) = {mdot_fuel_regen} kg/s')
+print(f'mdot_f_ffc = {mdot_fuel_ideal*ffc_pct} kg/s')
+print(f'mdot_o (ideal) = {mdot_ox_ideal} kg/s')
+
 
 
 A_t = (mdot_ideal_total/(Pc*10**5))*np.sqrt((R_specific*T_c)/(k*((2/(k+1))**((k+1)/(k-1)))))
@@ -133,21 +97,21 @@ print(f'R_exit = {R_e_mm} mm, D_exit = {D_e_mm} - ({D_e_mm/25.4} in)\n')
 
 print(f"Ideal CR (mae_5540) = 8.0/D_t**3/5 + 1.25 = {8.0/((D_t_mm/10)**(3/5))+1.25}")
 
-print(f'sanic {combustor.get_SonicVelocities(Pc=Pc,MR=MR,eps=opt_expansion)}')
+print(f'sanic {eng.combustor_obj.get_SonicVelocities(Pc=Pc,MR=MR,eps=opt_expansion)}')
 
 print('#### CALCULATING CHAMBER GEOMETRIC PROPERTIES ####\n')
 chamber_obj = chamber_geo(A_t_mm, R_t_mm, A_c_mm, R_c_mm, A_e_mm, R_e_mm)
-chamber_raw,i_t = define_contour(chamber_obj, L_star, nozzle_ha, chamber_ha)
+chamber_raw,i_t = define_contour(chamber_obj, L_star, nozzle_ha, chamber_ha, PLOT=False)
 chamber = copy.deepcopy(chamber_raw) # save raw copy of chamber data for export
-chamber_raw.to_csv(os.path.join(os.getcwd(),'output','chamber_raw.csv'))
+chamber_raw.to_csv(os.path.join(os.getcwd(), 'output', 'chamber_raw.csv'))
 
-
-print('#### RAW CHAMBER GEOMETRY EXPORTED - NOW PERFORMING REGEN ANALYSIS ON MODIFIED CHAMBER FILE ####')
+print('\n#### RAW CHAMBER GEOMETRY EXPORTED - NOW PERFORMING REGEN ANALYSIS ON MODIFIED CHAMBER FILE ####\n')
 # seed heat transfer analysis
-mu = 1.0145*0.0001 # millipoise -> Pa.s
-Cp = 4.17*10**3 # J/kg.K (need to convert)
-Pr = 0.55 # avg from CEA output with lower bias
-cstar = 1724.3 # m/s - CEA output
+mu = 0.91*0.0001 # millipoise -> Pa.s
+Cp = 3.25*10**3 # J/kg.K (need to convert)
+Pr = 0.50 # avg from CEA output with lower bias
+cstar = 1710 # m/s - CEA output
+#mod with eta cstar
 RC_throat = 0.015 # radius of curvature at throat - spoof 15mm for now
 
 cond_w = 370 # copper, W/m.K
@@ -156,17 +120,17 @@ C = 0.026 # Bartz constant
 # compute 4x bartz constants which do not vary over nozzle
 b1 = (C/((D_t_mm/1000)**0.2)) # first constant in bartz correlation C/Dt**0.2 - diameter correlation
 b2 = ((mu**0.2)*Cp)/(Pr**0.6) # 2nd constant - mu**0.2.Cp/Pr**0.6 - transport props
-b3 = (Pc_pa/cstar)**0.8 # 3rd constant - Pc correlation
+b3 = (Pc_pa/(cstar*eta_cstar))**0.8 # 3rd constant - Pc correlation
 b4 = ((D_t_mm/1000)/RC_throat)**0.1 # 4th constant - throat curvature correction
 bartz_mult = b1*b2*b3*b4
 
-chamber = import_regen_geo(chamber) # merge CSV of channel geometry
-print(chamber)
-#print(chamber)
-chamber = chamber_thermo_calcs(chamber,k,R_specific,T_c,Pc)
+chamber = chamber_thermo_calcs(chamber, k, R_specific, T_c, Pc)
+CHANNEL_CONFIG = 'regen_cfg.yaml'
+chamber = load_regen_geometry(chamber, CHANNEL_CONFIG)
+
 chamber['A_chan'] = chamber['w_chan'] * chamber['d_chan'] # mm**2
 chamber['D_hyd'] = 2*chamber['A_chan']/(chamber['w_chan'] + chamber['d_chan']) # mm
-chamber['mdot_chan'] = mdot_fuel_ideal/chamber['n_chan']
+chamber['mdot_chan'] = mdot_fuel_regen/chamber['n_chan']
 
 T_eth_0 = 300 # K - assume roomish temp 70F
 i_n = len(chamber.index) - 1  # grab i of nth index
@@ -181,7 +145,7 @@ q_guess = 1.0E06
 HT_SOLVE_GUESS = [T_wg_guess, T_wc_guess, q_guess]
 
 ### Do heat transfer ###
-for i in range(len(chamber.index))[::-1]:
+for i in tqdm(range(len(chamber.index))[::-1]):
     # NOTE: iterate thru in reverse
     if i > 0:
         # stop at 0th pt, will march upstream & use i-1th pt for area dx calc
@@ -198,9 +162,10 @@ for i in range(len(chamber.index))[::-1]:
         chamber.at[i, 'A_w_segment'] = np.pi * (chamber.at[i,'r']+chamber.at[i - 1,'r']) * np.sqrt(((chamber.at[i,'r']-chamber.at[i-1,'r'])**2)+chamber.at[i,'dx']**2) # mm**2
         # Calc Adiabatic Wall Temp
         chamber.at[i,'T_aw'] = t_adiabatic_wall(T_c,Pr,M,k)
+        chamber.at[i,'R_soot'] = soot_thermal_resistance(chamber.at[i,'eps'],chamber.at[i,'regime']) # (m**2 K)/W - Huzel & Huang
 
         #Get coolant inlet properties:
-        rho_c, cp_c, cond_c, visc_c = get_ethanol_props_SI(chamber.at[i,'T_c_i'],45.0)
+        rho_c, cp_c, cond_c, visc_c = get_jet_a_properties(chamber.at[i,'T_c_i'])
         chamber.at[i,'rho_c'] = rho_c
         chamber.at[i,'cp_c'] = cp_c
         chamber.at[i,'cond_c'] = cond_c
@@ -222,19 +187,21 @@ for i in range(len(chamber.index))[::-1]:
                 chamber.at[i, 'h_c'],
                 chamber.at[i, 'T_aw'],
                 M,
-                k) #create args for solver
+                k,
+                chamber.at[i, 'R_soot']) #create args for solver
 
 
-        qmod = 2.0
+        qmod = 1.0
         root = fsolve(func_bartz_root_find,HT_SOLVE_GUESS,args=data)
         chamber.at[i, 'T_wg'] = root[0]
         chamber.at[i, 'T_wc'] = root[1]
         chamber.at[i, 'q_tot'] = root[2]/qmod
-        chamber.at[i,'dT_c'] = (chamber.at[i,'q_tot']*chamber.at[i,'A_w_segment']/(1000.0**2))/(mdot_fuel_ideal*chamber.at[i,'cp_c'])
+        chamber.at[i, 'dT_c'] = (chamber.at[i,'q_tot']*chamber.at[i,'A_w_segment']/(1000.0**2))/(mdot_fuel_ideal*chamber.at[i,'cp_c'])
         chamber.at[i, 'T_c_e'] = chamber.at[i, 'T_c_i'] + chamber.at[i, 'dT_c']
         chamber.at[i - 1, 'T_c_i'] = chamber.at[i, 'T_c_e']
 
-        print(root)
+        if DEBUG:
+            print(root)
 
 
 

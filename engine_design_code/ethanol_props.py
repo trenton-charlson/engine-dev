@@ -6,7 +6,7 @@ author: tcharlson
 import CoolProp.CoolProp as CP
 
 def get_ethanol_props_SI(T,P,
-                         BAR=True,MIX=0.75):
+                         BAR=True,MIX=0.95):
     if BAR:
         P = P*10**5 # convert to Pa for coolprop input
 
