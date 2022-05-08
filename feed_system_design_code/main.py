@@ -17,10 +17,10 @@ P_start = 250.0 #bar - ~4500 psi bottle load pressure
 BAR = 10**5
 std_p_bar = 1.01325
 #P_ft = 43.437 #bars - ~630 psia - wag for 30 bar PC
-P_ft = 36.26 #bars - ~550 psia - wag for 25 bar PC
-P_ot = 33.0 #bars ~480 psi
+P_ft = 28.0 #bars
+P_ot = 25.0 #bars
 ts = 0.1
-t = 0
+t = 0.0
 
 MOL_stp = 22.4
 
@@ -45,7 +45,7 @@ print(f'Required Gas Volume Flowrates:'
       f'Ox STP Flowrate (h) = {qdot_o_stp} m**3 / hr @ STP\n')
 
 
-rho_n2_stp = CP.PropsSI('D', 'T', 273.15, 'P', 101325, 'nitrogen') # kg/m**3 - STP
+rho_n2_stp = CP.PropsSI('D', 'T', 273.15, 'P', 101325, 'Nitrogen') # kg/m**3 - STP
 rho_he_stp = CP.PropsSI('D', 'T', 273.15, 'P', 101325, 'Helium')
 
 V_tank = 40/1000 # L -> m**3
@@ -74,20 +74,22 @@ P_end = 45.0
 
 #blowdown = regulator_blowdown_single_species(P_start, T_bulk, P_end, P_ft, q_dot_fto, V_tank, GAS)
 
-blowdown_biprop,t,m = regulator_blowdown_rocket(P_start,T_bulk,P_end,
-                                                P_ot, q_dot_oto,
-                                                P_ft, q_dot_fto,
-                                                V_tank,
-                                                GAS)
+blowdown_biprop,t,m,_ = regulator_blowdown_rocket(P_start,T_bulk,P_end,
+                                                  P_ot, q_dot_oto,
+                                                  P_ft, q_dot_fto,
+                                                  V_tank,
+                                                  GAS)
 
 # Blowdown Sensitivity Study #
 vol = np.linspace(10,100,num=10)/1000 # convert to m**3
 p_start = [130.0,200.0,300.0]
 
-blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
-                           P_ot, q_dot_oto,
-                           P_ft, q_dot_fto,
-                           burntime)
+blowdown = blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
+                                      P_ot, q_dot_oto,
+                                      P_ft, q_dot_fto,
+                                      burntime)
+
+print(blowdown)
 
 
 

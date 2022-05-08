@@ -144,23 +144,28 @@ def regulator_blowdown_rocket(P_start,T_start,P_end,
 
     out.drop(out.tail(1).index,inplace=True) #  drop last row - https://stackoverflow.com/questions/26921651/how-to-delete-the-last-row-of-data-of-a-pandas-dataframe
     t_blowdown = max(out.index) # total blowdown time avail
+    mass_f = min(out['mass_u'])
     if DEBUG:
         print(f'Blowdown time from {P_start} Bar -> {P_end} Bar = {t_blowdown} [s]')
 
-    return out, t_blowdown, mass_i
+    return out, t_blowdown, mass_i, mass_f
 
 
 def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
                                P_ot,q_dot_oto,
                                P_ft,q_dot_fto,
-                               burntime):
+                               burntime,
+                               PLOT=True):
 
     print(f'Performing Pressurant System Sensitivity Analysis for:\n'
           f'P = {p_start}\n'
           f'Volume range: {min(vol)*1000} -> {max(vol)*1000} [L] - npts: {len(vol)}\n\n')
 
     markers = itertools.cycle((',', '+', '.', 'o', '*'))
-    fig1, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(16,9), sharex=True)
+    if PLOT:
+        fig1, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(9,12), sharex=False)
+
+    out_df = pd.DataFrame(index=p_start)
 
     for p in p_start:
         N2_df = pd.DataFrame(index=vol)
@@ -171,40 +176,71 @@ def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
 
         for v in tqdm(vol):
             # calc for nitrogen
-            _, time, mass = regulator_blowdown_rocket(p, T_bulk, P_end,
+            _, time, mass_i, mass_f = regulator_blowdown_rocket(p, T_bulk, P_end,
                                                       P_ot, q_dot_oto,
                                                       P_ft, q_dot_fto,
                                                       v,
                                                       'Nitrogen')
             N2_df.at[v,'time'] = time
-            N2_df.at[v,'mass'] = mass
+            N2_df.at[v,'mass_i'] = mass_i
+            N2_df.at[v,'mass_f'] = mass_f
             # calc for Helium
-            _, time, mass = regulator_blowdown_rocket(p, T_bulk, P_end,
+            _, time, mass_i, mass_f = regulator_blowdown_rocket(p, T_bulk, P_end,
                                                       P_ot, q_dot_oto,
                                                       P_ft, q_dot_fto,
                                                       v,
                                                       'Helium')
             He_df.at[v, 'time'] = time
-            He_df.at[v, 'mass'] = mass
+            He_df.at[v, 'mass_i'] = mass_i
+            He_df.at[v, 'mass_f'] = mass_f
 
-        ax1.plot(N2_df.index*1000,N2_df['time'], marker=marker, c='g', label = f'Nitrogen - {p} Bar')
-        ax1.plot(He_df.index*1000,He_df['time'], marker=marker, c='magenta', label = f'Helium - {p} Bar')
-        ax2.plot(N2_df.index * 1000, N2_df['mass'], marker=marker, c='g', label=f'Nitrogen - {p} Bar')
-        ax2.plot(He_df.index * 1000, He_df['mass'], marker=marker, c='magenta', label=f'Helium - {p} Bar')
+        if PLOT:
+            ax1.plot(N2_df.index*1000,N2_df['time'], marker=marker, c='g', label = f'Nitrogen - {p} Bar')
+            ax1.plot(He_df.index*1000,He_df['time'], marker=marker, c='magenta', label = f'Helium - {p} Bar')
+            ax2.plot(N2_df.index * 1000, N2_df['mass_i'], marker=marker, c='g', label=f'Nitrogen - {p} Bar')
+            ax2.plot(He_df.index * 1000, He_df['mass_i'], marker=marker, c='magenta', label=f'Helium - {p} Bar')
 
+            # Calculate Required Volume to meet burntime:
+            n2_vol_req = np.interp(burntime,N2_df['time'],N2_df.index*1000) #  required starting vol to meet burntime, Liters
+            he_vol_req = np.interp(burntime,He_df['time'],He_df.index*1000) #  required starting vol to meet burntime, Liters
+            out_df.at[p,'N2 Vol Required'] = n2_vol_req
+            out_df.at[p,'N2 Mass, Initial'] = np.interp(n2_vol_req,N2_df.index*1000,N2_df['mass_i'])
+            out_df.at[p,'N2 Mass Residual'] = np.interp(n2_vol_req,N2_df.index*1000,N2_df['mass_f'])
+            out_df.at[p,'He Vol Required'] = he_vol_req
+            out_df.at[p,'He Mass, Initial'] = np.interp(he_vol_req,He_df.index*1000,He_df['mass_i'])
+            out_df.at[p,'He Mass Residual'] = np.interp(he_vol_req,He_df.index*1000,He_df['mass_f'])
 
-    ax1.axhline(y=burntime, c='k', ls='--', label="Burntime")
-    ax1.legend()
-    ax1.grid()
-    ax1.set_ylabel(f'Blowdown Time for {P_end} Bar EOL Press [s]')
+    out_df = np.round(out_df,2)
 
-    ax2.legend()
-    ax2.grid()
-    ax2.set_xlabel('Bottle Volume [L]')
-    ax2.set_xlim(min(vol)*1000, max(vol)*1000)
-    ax1.set_xticks(np.arange(min(vol)*1000, max(vol)*1000, 5.0))
-    ax2.set_xticks(np.arange(min(vol)*1000, max(vol)*1000, 5.0))
-    ax2.set_ylabel(f'Loaded BOL Mass [kg]')
+    if PLOT:
+        ax1.axhline(y=burntime, c='k', ls='--', label="Burntime")
+        ax1.legend()
+        ax1.grid()
+        ax1.set_ylabel(f'Blowdown Time for {P_end} Bar EOL Press [s]')
 
-    fig1.suptitle(f'Blowdown System Analysis\n'
-                  f'p = {p_start} [bar]')
+        ax2.legend()
+        ax2.grid()
+        ax2.set_xlabel('Bottle Volume [L]')
+        ax1.set_xlim(min(vol)*1000, max(vol)*1000)
+        ax2.set_xlim(min(vol)*1000, max(vol)*1000)
+        ax1.set_xticks(np.arange(min(vol)*1000, max(vol)*1000, 5.0))
+        ax1.tick_params(labelbottom=False)
+        ax2.set_xticks(np.arange(min(vol)*1000, max(vol)*1000, 5.0))
+        ax2.set_ylabel(f'Loaded BOL Mass [kg]')
+
+        cell_text = []
+        for row in range(len(out_df)):
+            cell_text.append(out_df.iloc[row])
+
+        table = ax3.table(cellText=cell_text, colLabels=out_df.columns, loc='center')
+        ax3.axis('off')
+                          #colWidths=np.ones(len(out_df.columns))*0.1)
+        #table.auto_set_font_size(False)
+        #table.set_fontsize(10.0)
+
+        # Set title and show plot
+        fig1.suptitle(f'Blowdown System Analysis\n'
+                      f'p = {p_start} [bar]')
+        plt.tight_layout
+
+    return out_df

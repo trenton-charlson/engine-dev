@@ -31,7 +31,7 @@ fuel = propellant("Kerosene")
 ox = propellant("LOX")
 
 ### PERFORMANCE PARAMS ###
-Pc = 25.0 #bar
+Pc = 20.0 #bar
 Pc_pa = Pc * 10**5 # chamber pressure in Pascals
 Pe = 1.01325 #bar
 thrust = 3000 #newton

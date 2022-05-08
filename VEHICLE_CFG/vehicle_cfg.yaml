@@ -1,0 +1,7 @@
+# Mission parameter targets #
+burntime: 15.0 #seconds
+thrust: 3000.0 #newtons
+fuel:
+  type: 'Kerosene'
+  rho_tank: 800.0 #kg/m**3
+  
