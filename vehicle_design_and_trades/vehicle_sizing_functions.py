@@ -11,3 +11,9 @@ def mass_tank_segment(l,tank_lw,skin_lw,
     mass = l*((1+(beta_tank_str-1)+(beta_tank_endcaps-1))*tank_lw + beta_skin_str*skin_lw)
 
     return mass
+
+def add_vehicle_segment(fig,ax,
+                        start_x,end_x,c,label):
+
+
+    return None

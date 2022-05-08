@@ -194,12 +194,6 @@ def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
             He_df.at[v, 'mass_i'] = mass_i
             He_df.at[v, 'mass_f'] = mass_f
 
-        if PLOT:
-            ax1.plot(N2_df.index*1000,N2_df['time'], marker=marker, c='g', label = f'Nitrogen - {p} Bar')
-            ax1.plot(He_df.index*1000,He_df['time'], marker=marker, c='magenta', label = f'Helium - {p} Bar')
-            ax2.plot(N2_df.index * 1000, N2_df['mass_i'], marker=marker, c='g', label=f'Nitrogen - {p} Bar')
-            ax2.plot(He_df.index * 1000, He_df['mass_i'], marker=marker, c='magenta', label=f'Helium - {p} Bar')
-
             # Calculate Required Volume to meet burntime:
             n2_vol_req = np.interp(burntime,N2_df['time'],N2_df.index*1000) #  required starting vol to meet burntime, Liters
             he_vol_req = np.interp(burntime,He_df['time'],He_df.index*1000) #  required starting vol to meet burntime, Liters
@@ -209,6 +203,12 @@ def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
             out_df.at[p,'He Vol Required'] = he_vol_req
             out_df.at[p,'He Mass, Initial'] = np.interp(he_vol_req,He_df.index*1000,He_df['mass_i'])
             out_df.at[p,'He Mass Residual'] = np.interp(he_vol_req,He_df.index*1000,He_df['mass_f'])
+
+        if PLOT:
+            ax1.plot(N2_df.index * 1000, N2_df['time'], marker=marker, c='g', label=f'Nitrogen - {p} Bar')
+            ax1.plot(He_df.index * 1000, He_df['time'], marker=marker, c='magenta', label=f'Helium - {p} Bar')
+            ax2.plot(N2_df.index * 1000, N2_df['mass_i'], marker=marker, c='g', label=f'Nitrogen - {p} Bar')
+            ax2.plot(He_df.index * 1000, He_df['mass_i'], marker=marker, c='magenta', label=f'Helium - {p} Bar')
 
     out_df = np.round(out_df,2)
 
