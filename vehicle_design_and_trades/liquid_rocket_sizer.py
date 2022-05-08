@@ -25,9 +25,9 @@ mdot_o
 mdot_f
 """
 PC = 20.0 # bars
-thrust = 3000 # newton
-burntime = 15.0 # seconds
-PRESSGASS = 'N2'
+thrust = 2250 # newton
+burntime = 20.0 # seconds
+PRESSGASS = 'He'
 
 # Pressure Ladder
 f_inj_stiff = 20.0 # percent
@@ -35,13 +35,13 @@ f_reg_stiff = 15.0 # percent
 o_inj_stiff = 20.0 # percent
 
 # Engine Flowrates
-mdot_o = 0.7821 # kg/s
+mdot_o = 0.586 # kg/s
 rho_o = 1141.0 #kg/m**3
 q_ox = mdot_o/rho_o # m**3/s
 V_ox_i = q_ox*burntime
 m_o_i = mdot_o*burntime
 
-mdot_f = 0.5291 # kg/s
+mdot_f = 0.396 # kg/s
 rho_f = 800.0 # kg/m**3
 q_f = mdot_f/rho_f # m**3/s
 V_f_i = q_f*burntime
@@ -90,6 +90,16 @@ l_thrust_struct = 5.0*25.4/1000 # m baseline
 m_aft_vp = 2.5 # kg
 l_aft_vp = 8.0*25.4/1000
 
+## PLUMBING ##
+"""
+Aqua dome reg: 1783 - 0.76 kg
+Aqua pilot reg: 1247-1 - 0.15 kg
+Aqua check:  684 - 0.14 kg
+"""
+
+beta_valve = 2.0
+m_valves = 2.1*beta_valve # kg
+
 ## AIRFRAME ##
 """
 -- 7.5" fiberglass tubing --
@@ -110,6 +120,9 @@ skin_OD = 195.78 # mm
 skin_LW = 1.748 # kg/m
 
 A_cs = np.pi*(skin_OD/(2*1000))**2
+
+# Nosecone - WAG for now
+m_nc = 2.0 #kg
 
 ## TANKAGE ##
 """
@@ -161,24 +174,42 @@ m_p_f = blowdown.at[np.round(P_p_BOL,2),f'{PRESSGASS} Mass Residual']
 mdot_p = (m_p_i-m_p_f)/burntime # average pressurant flowrate
 
 m_propellant_i = m_f_i + m_o_i
-m_struct = m_thrust_struct+m_engine+m_o_tank+m_f_tank
+m_struct = m_thrust_struct+m_engine+m_o_tank+m_f_tank+m_valves+m_nc+m_aft_vp
 
 m_wet = m_propellant_i+m_struct+m_p_i
-m_dry = m_struct+m_p_i # assume worst case all pressurant stays onboard 
+m_dry = m_struct+m_p_i  # assume worst case all pressurant stays onboard
 
-mdot_t = mdot_f+mdot_o+mdot_p # total propellant flowrate
+mdot_t = mdot_f+mdot_o  # total propellant flowrate
 
-
-print(f'VEHICLE SIZING OUTPUTS:\n'
-      f'Propellant Mass: {m_propellant_i} [kg]\n'
-      f'Pressurant Mass: {m_p_i} [kg]\n'
-      f'Structural Mass: {np.round(m_struct,2)} [kg]\n\n'
-      f'>> TOTAL LIFTOFF MASS = {np.round(m_wet,2)} [kg]\n'
-      f'>> TOTAL DRY MASS = {np.round(m_dry,2)} [kg]\n')
-
-## Run Traj Sim ##
-
+## Trajectory Sim & Analysis ##
 traj = _1D_rocket_traj(m_wet,m_dry,mdot_t,thrust,A_cs)
+alt_max = np.round(max(traj['x']))
+vel_max = np.round(max(traj['v']),2)
+
+## PRINT RESULTS ##
+
+print(f'\n##########################################################\n'
+      f'VEHICLE SIZING INPUTS:'
+      f'\n##########################################################\n\n'
+      f'>> Thrust = {thrust} [N]\n'
+      f'>> Burn Time = {burntime} [s]\n'
+      f'>> Pressurant: {PRESSGASS}\n'
+      f'>> Vehicle Diameter: {skin_OD} [mm] - ({np.round(skin_OD/25.4,3)} [in])')
+
+print(f'\n##########################################################\n'
+      f'VEHICLE SIZING OUTPUTS:'
+      f'\n##########################################################\n\n'
+      f'>> Propellant Mass = {m_propellant_i} [kg]\n'
+      f'>> Pressurant Mass = {m_p_i} [kg]\n'
+      f'>> Structural Mass = {np.round(m_struct,2)} [kg]\n'
+      f'>> TOTAL LIFTOFF MASS = {np.round(m_wet,2)} [kg]\n'
+      f'>> TOTAL DRY MASS = {np.round(m_dry,2)} [kg]\n'
+      f'>> PROPELLANT MASS FRACTION = {np.round(m_propellant_i/m_wet,2)}\n'
+      f'>> LIFTOFF TWR = {np.round(thrust/(9.81*m_wet),2)} [-]\n'
+      f'\n'
+      f'>> ALTITUDE ACHIEVED = {alt_max} [m]\n'
+      f'>> MAX VELOCITY = {vel_max} [m/s]\n')
+
 
 fig, ax = plt.subplots(figsize=(16,6))
 left = 0.0

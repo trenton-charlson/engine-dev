@@ -34,7 +34,7 @@ ox = propellant("LOX")
 Pc = 20.0 #bar
 Pc_pa = Pc * 10**5 # chamber pressure in Pascals
 Pe = 1.01325 #bar
-thrust = 3000 #newton
+thrust = 2250 #newton
 # 2250 -> ~500lbf
 # 4500 -> ~1000 lbf
 MR = 1.7

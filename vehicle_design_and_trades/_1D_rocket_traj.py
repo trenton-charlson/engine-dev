@@ -5,11 +5,16 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from ambiance import Atmosphere
 
 def _1D_rocket_traj(mwet,mdry,mdot,thrust,A_cs,
                     cd=0.75,rho_air=1.225,
                     ts=0.1,
                     PLOT=True):
+
+    heights = np.linspace(0.01,20000.0,num=100)
+    atmosphere = Atmosphere(heights)
+    rho = atmosphere.density
 
     # Compute 1D trajectory of rocket given baseline input parameters
     mfuel = mwet-mdry #fuel mass
@@ -29,7 +34,8 @@ def _1D_rocket_traj(mwet,mdry,mdot,thrust,A_cs,
         vehicle_weight = vehicle_mass*9.81 #weight in Newtons
 
         v_init = traj.iat[i-1, 2] #velocity at pos2
-        f_drag = 0.5 * rho_air * v_init**2 * A_cs
+        rho_loc = np.interp(traj.iat[i-1,3],heights,rho)
+        f_drag = 0.5 * rho_loc * v_init**2 * A_cs
         f_accel = thrust - vehicle_weight - f_drag
         accel = f_accel / vehicle_mass
 
@@ -42,6 +48,7 @@ def _1D_rocket_traj(mwet,mdry,mdot,thrust,A_cs,
         traj.at[t, 'a'] = accel
         traj.at[t, 'v'] = v_final
         traj.at[t, 'x'] = traj.iat[i-1, 3] + dx
+        traj.at[t, 'rho'] = rho_loc
 
         i = i+1
         t = t+ts
@@ -50,7 +57,8 @@ def _1D_rocket_traj(mwet,mdry,mdot,thrust,A_cs,
         # rocket is coasting
         vehicle_weight = vehicle_mass * 9.81  # weight in Newtons
         v_init = traj.iat[i - 1, 2]  # velocity at pos2
-        f_drag = 0.5 * rho_air * v_init ** 2 * A_cs
+        rho_loc = np.interp(traj.iat[i-1,3],heights,rho)
+        f_drag = 0.5 * rho_loc * v_init ** 2 * A_cs
         f_accel = vehicle_weight + f_drag
         accel = -f_accel / vehicle_mass #accel is nevgative
 
@@ -63,22 +71,27 @@ def _1D_rocket_traj(mwet,mdry,mdot,thrust,A_cs,
         traj.at[t, 'a'] = accel
         traj.at[t, 'v'] = v_final
         traj.at[t, 'x'] = traj.iat[i - 1, 3] + dx
+        traj.at[t, 'rho'] = rho_loc
 
         i = i+1
         t = t+ts
 
     if PLOT:
-        fig, (ax0, ax1, ax2) = plt.subplots(3, 1, sharex=True)
+        fig, (ax0, ax1, ax2, ax3) = plt.subplots(4, 1, figsize=(10,6), sharex=True)
         ax0.plot(traj['x'], label='Altitude')
         ax0.set_ylabel('Altitude [m]')
         ax1.plot(traj['v'], label='Velocity')
         ax1.set_ylabel('Velocity [m/s]')
         ax2.plot(traj['a'], label='Acceleration')
         ax2.set_ylabel('Acceleration [m/s**2]')
-        ax2.set_xlabel('Time [s]')
+        ax3.plot(traj['rho'], label='Atmospheric Density')
+        ax3.set_ylabel('rho [kg/m**3]')
+        ax3.set_xlabel('Time [s]')
+
 
         fig.suptitle(f'1D Trajectory Sim\n'
-                     f'Max Alt: {np.round(np.max(traj["x"]))} [m]')
+                     f'Max Alt: {np.round(np.max(traj["x"]))} [m]\n'
+                     f'Thrust: {thrust} [N], burntime: {burn_time} [s]')
         plt.show()
 
     return traj
