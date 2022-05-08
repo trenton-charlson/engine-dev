@@ -65,11 +65,15 @@ def _1D_rocket_traj(mwet,mdry,mdot,thrust,A_cs,
 
     return traj
 
-mwet = 73.49#kg
-mdry = 52.52 #kg
-mdot = 1.05 #kg/s
-thrust = 2250.0 #Newton
-A_cs = np.pi*0.0654**2 # 5.15 IN DIAMETER BODY; 5" std tube
+mwet = 61.5#kg
+mdry = 49.5 #kg
+mdot = 1.22 #kg/s
+thrust = 3000.0 #Newton
+D = 6.17 # inches - 6" tube
+A_cs_i = np.pi*(D/2)**2
+A_cs = A_cs_i * 0.00064516 # in**2 -> m**2
+
+print(A_cs)
 
 traj = _1D_rocket_traj(mwet, mdry, mdot, thrust, A_cs)
 print(f'Max Altitude: {np.max(traj["x"])}')

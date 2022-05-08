@@ -11,7 +11,7 @@ import os
 
 
 def define_contour(chamber,L_star,nozl_ha,chamber_ha,
-                   rnd=3,npts=50,PLOT=True):
+                   rnd=3,npts=100,PLOT=True):
     """
 
     :param chamber:
@@ -47,10 +47,10 @@ def define_contour(chamber,L_star,nozl_ha,chamber_ha,
     print(f'Nozzle Length = {nozl_l} mm')
 
     for i in range(len(x_coords)):
-        if i<=npts: #chamber barrel
+        if i<npts: #chamber barrel
             contour.at[i,'r'] = chamber.Rc
 
-        elif (i>npts-1 and i<(npts*2)-2):
+        elif (i>=npts-1 and i<(npts*2)-2):
             # converging section
             dx = x_coords[i+1] - x_coords[i]
             dr = dx*np.tan(np.deg2rad(chamber_ha))

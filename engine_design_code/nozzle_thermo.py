@@ -23,7 +23,6 @@ def chamber_thermo_calcs(chamber,k,R_specific,Tc,Pc):
         T,P = t_p_from_mach(Tc,Pc,chamber.at[i,'mach'],k)
         chamber.at[i,'T'] = T
         chamber.at[i,'P'] = P
-
     return chamber
 
 def t_p_from_mach(T0,P0,M,k):
@@ -41,7 +40,6 @@ def func_bartz_root_find(X, *data):
     return [X[2] - h_c*(X[1] - T_c_i),
             X[2] - (1/(R+1/(bartz_mult*bartz_correction_factor(T0, X[0], M, k))))*(T_aw - X[0]),
             X[2] - (cond_w/t_w)*(X[0] - X[1])]
-
 
 def soot_thermal_resistance(eps,regime):
     if regime == 0.0:
@@ -103,16 +101,23 @@ def load_regen_geometry(chamber,fn):
         for sect in regen_config.keys():
             x = round(chamber.at[i,'x'],2)
             if (x >= regen_config[sect]['start_x'] and x <= regen_config[sect]['end_x']):
+                # import config params
                 chamber.at[i,'n_chan'] = regen_config[sect]['n_chan']
                 chamber.at[i,'w_chan'] = regen_config[sect]['w_chan']
                 chamber.at[i,'d_chan'] = regen_config[sect]['d_chan']
                 chamber.at[i,'t_wall'] = regen_config[sect]['t_wall']
+                # calculate addtl channel params
+                chamber.at[i,'r_cool'] = chamber.at[i,'t_wall'] + chamber.at[i,'r']
+                chamber.at[i,'r_outer'] = chamber.at[i,'r_cool'] + chamber.at[i,'d_chan']
+                chamber.at[i,'fin_thick'] = (2*np.pi)*chamber.at[i,'r_cool']/chamber.at[i,'n_chan'] - chamber.at[i,'w_chan']
 
     return chamber
 
 def plot_chamber_thermo(chamber):
     fig1, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(nrows=3, ncols=2, figsize=(16,9), sharex=True)
     ax1.plot(chamber['x'], chamber['r'], c='k', lw=2)
+    ax1.plot(chamber['x'], chamber['r_cool'], c='k', lw=1, ls=':')
+    ax1.plot(chamber['x'], chamber['r_outer'], c='k', lw=1, ls='-')
     ax1.set(ylim=(0.0, max(chamber['r'] * 1.25)))
     ax11 = ax1.twinx()
     ax11.plot(chamber['x'], chamber['q_tot']/10**7, c='r', lw=2, label='q_tot [MW/m^2]')
@@ -121,6 +126,8 @@ def plot_chamber_thermo(chamber):
     ax2.plot(chamber['x'], chamber['T_c_i'], c='b', lw=2,label='T_c')
     ax2.plot(chamber['x'], chamber['T_wg'], c='r',lw=2,label='T_wg')
     ax2.plot(chamber['x'], chamber['T_wc'], c='cyan',lw=2,label='T_wc')
+    ax21 = ax2.twinx()
+    ax21.plot(chamber['x'], chamber['dT_c'], c='magenta', lw=2, label='dT_c')
 
     ax3.plot(chamber['x'], chamber['mach'], c='r', lw=2, label='Mach Number - [-]')
     ax31 = ax3.twinx()
@@ -130,29 +137,42 @@ def plot_chamber_thermo(chamber):
     ax4.plot(chamber['x'], chamber['w_chan'], label='w_chan')
     ax4.plot(chamber['x'], chamber['d_chan'], label='d_chan')
     ax41 = ax4.twinx()
-    ax41.plot(chamber['x'], chamber['u_c'], c='k', ls='-', label='Coolant Velocity - [m/s]')
+    ax41.plot(chamber['x'], chamber['n_chan'], c='k',ls='--',label='n_chan')
 
-    ax5.plot(chamber['x'], chamber['Re_c'], label='Coolant Reynolds Number')
+    ax5.plot(chamber['x'], chamber['Re_c'], c='b', label='Coolant Reynolds Number')
+    ax51 = ax5.twinx()
+    ax51.plot(chamber['x'], chamber['rho_c'], c='cyan', label='Coolant Density [kg/m**3]')
 
-    ax6.plot(chamber['x'], chamber['rho_c'], label='Coolant Density [kg/m**3]')
+    ax6.plot(chamber['x'], chamber['fin_thick'], c='r', label = 'Fin Wall Thickness [mm]')
+    ax61 = ax6.twinx()
+    ax61.plot(chamber['x'], chamber['u_c'], c='k', ls='-', label='Coolant Velocity - [m/s]')
+
 
 
     ax1.axis('equal')
     ax11.legend()
     ax31.legend()
+    ax21.legend()
     ax41.legend()
     ax2.legend()
     ax3.legend()
     ax4.legend()
     ax5.legend()
-    ax6.legend()
+    ax51.legend()
+    ax61.legend()
     ax3.set_xlabel('x - [mm]')
     ax1.set_ylabel('r - [mm]')
+    ax4.set_ylabel('Channel Geo - [mm]')
+    ax41.set_ylabel('Channel Count - [n]')
     ax2.set_ylabel(f'Regen Temps - [K]')
+    ax21.set_ylabel(f'Coolant dT - [K]')
     ax3.set_ylabel(f'Regen Geo - [mm]')
-
-    ax41.set_ylabel(f'Coolant Velocity - [m/s]')
-    fig1.suptitle('Regen Cooling Properties')
+    ax6.set_ylabel(f'Fin Thickness - [mm]')
+    ax61.set_ylabel(f'Coolant Velocity - [m/s]')
+    fig1.suptitle(f'Regen Cooling Properties\n'
+                  f'Max Coolant Temp: {np.round(max(chamber["T_c_i"]),2)} [K]\n'
+                  f'Max Wall Temp: {np.round(max(chamber["T_wg"]),2)} [K]\n'
+                  f'Transit Time: {np.round(np.sum(chamber["t_transit"]),4)*1000} [ms]')
     plt.tight_layout
     return
 

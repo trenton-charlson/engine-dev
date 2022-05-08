@@ -31,23 +31,25 @@ fuel = propellant("Kerosene")
 ox = propellant("LOX")
 
 ### PERFORMANCE PARAMS ###
-Pc = 20.0 #bar
+Pc = 25.0 #bar
 Pc_pa = Pc * 10**5 # chamber pressure in Pascals
 Pe = 1.01325 #bar
-thrust = 2250 #newton ~500lbf
-MR = 1.8
+thrust = 3000 #newton
+# 2250 -> ~500lbf
+# 4500 -> ~1000 lbf
+MR = 1.7
 eta_cstar = 0.9 # guess
 pressure_ratio = Pe/Pc
 print(f'pressure_ratio = {pressure_ratio}')
 print(f'Pc/Pe = {Pc/Pe}')
 
-ffc_pct = 0.1 # % FFC Mass fraction
+ffc_pct = 0.15 # % FFC Mass fraction
 
 ### GEOMETRIC PARAMS ###
 fac_CR = 8.0 #contraction ratio
 chamber_ha = 30.0 #degrees, chamber half angle
 nozzle_ha = 15.0 #degrees, nozzle half angle; conical nozzle
-L_star = 1.5 #meters - http://mae-nas.eng.usu.edu/MAE_5540_Web/propulsion_systems/section6/section.6.1.pdf guess for now
+L_star = 1.15 #meters - http://mae-nas.eng.usu.edu/MAE_5540_Web/propulsion_systems/section6/section.6.1.pdf guess for now
 npts = 100 #number of points to define each contour section
 
 FULL_OUTPUT = False
@@ -99,13 +101,13 @@ print(f"Ideal CR (mae_5540) = 8.0/D_t**3/5 + 1.25 = {8.0/((D_t_mm/10)**(3/5))+1.
 
 print(f'sanic {eng.combustor_obj.get_SonicVelocities(Pc=Pc,MR=MR,eps=opt_expansion)}')
 
-print('#### CALCULATING CHAMBER GEOMETRIC PROPERTIES ####\n')
+print('\n#### CALCULATING CHAMBER GEOMETRIC PROPERTIES ####')
 chamber_obj = chamber_geo(A_t_mm, R_t_mm, A_c_mm, R_c_mm, A_e_mm, R_e_mm)
 chamber_raw,i_t = define_contour(chamber_obj, L_star, nozzle_ha, chamber_ha, PLOT=False)
 chamber = copy.deepcopy(chamber_raw) # save raw copy of chamber data for export
 chamber_raw.to_csv(os.path.join(os.getcwd(), 'output', 'chamber_raw.csv'))
 
-print('\n#### RAW CHAMBER GEOMETRY EXPORTED - NOW PERFORMING REGEN ANALYSIS ON MODIFIED CHAMBER FILE ####\n')
+print('\n#### RAW CHAMBER GEOMETRY EXPORTED - NOW PERFORMING REGEN ANALYSIS ON MODIFIED CHAMBER FILE ####')
 # seed heat transfer analysis
 mu = 0.91*0.0001 # millipoise -> Pa.s
 Cp = 3.25*10**3 # J/kg.K (need to convert)
@@ -171,6 +173,7 @@ for i in tqdm(range(len(chamber.index))[::-1]):
         chamber.at[i,'cond_c'] = cond_c
         chamber.at[i,'visc_c'] = visc_c
         chamber.at[i,'u_c'] = chamber.at[i,'mdot_chan']/(chamber.at[i,'rho_c']*(chamber.at[i,'A_chan']/(1000**2))) # Coolant Velo - m/s
+        chamber.at[i,'t_transit'] = chamber.at[i,'dx']/(chamber.at[i,'u_c']*1000)
         chamber.at[i,'Re_c'] = (chamber.at[i,'rho_c']*(chamber.at[i,'D_hyd']/1000)*chamber.at[i,'u_c'])/chamber.at[i,'visc_c']  # Coolant Re; convert D_hyd to m
         chamber.at[i,'Pr_c'] = (chamber.at[i,'cp_c']*chamber.at[i,'visc_c'])/chamber.at[i,'cond_c']
         chamber.at[i,'f_darcy'] = (0.79*np.log(chamber.at[i,'Re_c']) - 1.64)**(-2) # Petukhov correlation; Incorpera pg.490
@@ -205,12 +208,21 @@ for i in tqdm(range(len(chamber.index))[::-1]):
 
 
 
+    else:
+        keys = [key for key in chamber.keys() if key not in ['x', 'r', 'theta', 'eps', 'regime']]
+        for key in keys:
+            chamber.at[i,key] = chamber.at[i+1,key]
+
+
+
 #plot_chamber_param(chamber,'q','W/m**2')
 #plot_chamber_param(chamber,'T_wc','K')
 #plot_chamber_param(chamber,'w_fin','mm')
 plot_chamber_thermo(chamber)
 
-print(chamber)
+print(f'Chamber OD w/Cooling = {np.round(np.max(chamber["r_outer"]),2)*2} [mm]')
+
+#print(chamber)
 chamber.to_csv(os.path.join(os.getcwd(),'output','chamber_final.csv'))
 
 
