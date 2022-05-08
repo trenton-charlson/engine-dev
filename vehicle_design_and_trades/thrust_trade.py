@@ -65,8 +65,8 @@ def _1D_rocket_traj(mwet,mdry,mdot,thrust,A_cs,
 
     return traj
 
-mwet = 61.5#kg
-mdry = 49.5 #kg
+mwet = 81.5#kg
+mdry = 69.5 #kg
 mdot = 1.22 #kg/s
 thrust = 3000.0 #Newton
 D = 6.17 # inches - 6" tube

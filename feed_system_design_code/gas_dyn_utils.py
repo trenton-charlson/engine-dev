@@ -5,12 +5,23 @@ Utility functions for gas dynamics shiz
 import CoolProp.CoolProp as CP
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+import itertools
 
+def m3s_2_sm3h(rate,P,T,
+               BAR=True):
+    """
+    convert m**3/s @ pressure to Std m**3/hr
+    """
+    if BAR:
+        std_p_bar = 1.01325
+    else:
+        std_p_bar = 101325 # Pa
 
-def vdot_to_flow_coeff():
+    rate_stp = (rate * (273.15 / T) * (P / std_p_bar)) * 3600  # m**3 /s
 
-
-    return
+    return rate_stp
 
 def isenthalpic_throttle(P1,P2,T1,GAS,
                          BAR = 10**5):
@@ -73,7 +84,8 @@ def regulator_blowdown_rocket(P_start,T_start,P_end,
                               P_reg_fuel, q_reg_fuel,
                               V_tank,
                               GAS,
-                              ts=0.1, t_max=100.0, BAR=10**5, K = 1.4):
+                              ts=0.1, t_max=100.0, BAR=10**5, K = 1.4,
+                              DEBUG=False):
     t=0.0
     P = P_start
     out = pd.DataFrame()
@@ -82,7 +94,8 @@ def regulator_blowdown_rocket(P_start,T_start,P_end,
     out.at[t, 'P_u'] = P
     out.at[t, 'T_u'] = T_start
     out.at[t, 'rho_u'] = CP.PropsSI('D','T', T_start, 'P', P*BAR, GAS)
-    out.at[t, 'mass_u'] = V_tank*out.at[t, 'rho_u']
+    mass_i = V_tank*out.at[t, 'rho_u']
+    out.at[t, 'mass_u'] = mass_i
 
     while (out.at[t,'P_u'] > P_end) and (t <= t_max):
         #isenthalpic throttling process:
@@ -130,7 +143,68 @@ def regulator_blowdown_rocket(P_start,T_start,P_end,
         out.at[t, 'P_u'] = out.at[tp, 'P_u'] * (out.at[t, 'T_u']/out.at[tp, 'T_u'])**(K/(K-1))
 
     out.drop(out.tail(1).index,inplace=True) #  drop last row - https://stackoverflow.com/questions/26921651/how-to-delete-the-last-row-of-data-of-a-pandas-dataframe
-    print(f'Blowdown time from {P_start} Bar -> {P_end} Bar = {max(out.index)} [s]')
+    t_blowdown = max(out.index) # total blowdown time avail
+    if DEBUG:
+        print(f'Blowdown time from {P_start} Bar -> {P_end} Bar = {t_blowdown} [s]')
+
+    return out, t_blowdown, mass_i
 
 
-    return out
+def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
+                               P_ot,q_dot_oto,
+                               P_ft,q_dot_fto,
+                               burntime):
+
+    print(f'Performing Pressurant System Sensitivity Analysis for:\n'
+          f'P = {p_start}\n'
+          f'Volume range: {min(vol)*1000} -> {max(vol)*1000} [L] - npts: {len(vol)}\n\n')
+
+    markers = itertools.cycle((',', '+', '.', 'o', '*'))
+    fig1, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(16,9), sharex=True)
+
+    for p in p_start:
+        N2_df = pd.DataFrame(index=vol)
+        He_df = pd.DataFrame(index=vol)
+        marker = next(markers)
+
+        print(f'Solving for {p} Bar Bottle Pressure')
+
+        for v in tqdm(vol):
+            # calc for nitrogen
+            _, time, mass = regulator_blowdown_rocket(p, T_bulk, P_end,
+                                                      P_ot, q_dot_oto,
+                                                      P_ft, q_dot_fto,
+                                                      v,
+                                                      'Nitrogen')
+            N2_df.at[v,'time'] = time
+            N2_df.at[v,'mass'] = mass
+            # calc for Helium
+            _, time, mass = regulator_blowdown_rocket(p, T_bulk, P_end,
+                                                      P_ot, q_dot_oto,
+                                                      P_ft, q_dot_fto,
+                                                      v,
+                                                      'Helium')
+            He_df.at[v, 'time'] = time
+            He_df.at[v, 'mass'] = mass
+
+        ax1.plot(N2_df.index*1000,N2_df['time'], marker=marker, c='g', label = f'Nitrogen - {p} Bar')
+        ax1.plot(He_df.index*1000,He_df['time'], marker=marker, c='magenta', label = f'Helium - {p} Bar')
+        ax2.plot(N2_df.index * 1000, N2_df['mass'], marker=marker, c='g', label=f'Nitrogen - {p} Bar')
+        ax2.plot(He_df.index * 1000, He_df['mass'], marker=marker, c='magenta', label=f'Helium - {p} Bar')
+
+
+    ax1.axhline(y=burntime, c='k', ls='--', label="Burntime")
+    ax1.legend()
+    ax1.grid()
+    ax1.set_ylabel(f'Blowdown Time for {P_end} Bar EOL Press [s]')
+
+    ax2.legend()
+    ax2.grid()
+    ax2.set_xlabel('Bottle Volume [L]')
+    ax2.set_xlim(min(vol)*1000, max(vol)*1000)
+    ax1.set_xticks(np.arange(min(vol)*1000, max(vol)*1000, 5.0))
+    ax2.set_xticks(np.arange(min(vol)*1000, max(vol)*1000, 5.0))
+    ax2.set_ylabel(f'Loaded BOL Mass [kg]')
+
+    fig1.suptitle(f'Blowdown System Analysis\n'
+                  f'p = {p_start} [bar]')
