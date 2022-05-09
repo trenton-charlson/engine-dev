@@ -157,9 +157,9 @@ def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
                                burntime,
                                PLOT=True):
 
-    print(f'Performing Pressurant System Sensitivity Analysis for:\n'
-          f'P = {p_start}\n'
-          f'Volume range: {min(vol)*1000} -> {max(vol)*1000} [L] - npts: {len(vol)}\n')
+    print(f'Performing Pressurant System Analysis for:\n'
+          f'P_targets = {p_start}\n'
+          f'Volume range: {min(vol)*1000} -> {max(vol)*1000} [L] - npts: {len(vol)}')
 
     markers = itertools.cycle((',', '+', '.', 'o', '*'))
     if PLOT:

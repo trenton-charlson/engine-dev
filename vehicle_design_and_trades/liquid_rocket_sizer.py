@@ -13,6 +13,11 @@ from engine_design_code import engine_sizing_run
 from _1D_rocket_traj import _1D_rocket_traj
 from sizing_constants import *
 
+## CTRL PARAMS ##
+PLOT_PRESSURANT_SENSITIVITY = False
+PLOT_VEHICLE = False
+PLOT_TRAJECTORY = True
+
 ## TOP LEVEL PARAMS ##
 PC = 20.0 # bars
 P_exit = 1.01325 #bars
@@ -23,9 +28,11 @@ oxidizer = engine_sizing_run.propellant('LOX')
 fuel = engine_sizing_run.propellant('Kerosene')
 fac_CR = 8.0 # face contraction ratio
 
-burntime = 20.0 # seconds
+DRY_MASS_GROWTH_FACTOR = 1.30  # spoof for future mass growth
+
+burntime = 18.0 # seconds
 P_p_BOL = np.round(4500/BAR2PSI,2) # beginning bottle pressure
-PRESSGASS = 'He'
+PRESSGASS = 'N2'
 
 # Run high level engine sizer to extract flowrates
 eng, T_c, T_t, R_specific, k, opt_expansion, v_e_ideal = \
@@ -71,7 +78,7 @@ blowdown = gas_dyn_utils.blowdown_sensitivity_study(vol_sweep,[P_p_BOL],T_p_LOAD
                                                     P_o_tank, q_ox,
                                                     P_f_tank, q_f,
                                                     burntime,
-                                                    PLOT=True)
+                                                    PLOT=PLOT_PRESSURANT_SENSITIVITY)
 
 V_p_BOL = blowdown.at[np.round(P_p_BOL,2),f'{PRESSGASS} Vol Required']
 m_p_i = blowdown.at[np.round(P_p_BOL,2),f'{PRESSGASS} Mass, Initial']
@@ -79,7 +86,7 @@ m_p_f = blowdown.at[np.round(P_p_BOL,2),f'{PRESSGASS} Mass Residual']
 mdot_p = (m_p_i-m_p_f)/burntime # average pressurant flowrate
 
 m_propellant_i = m_f_i + m_o_i
-m_struct = m_thrust_struct+m_engine+m_o_tank+m_f_tank+m_valves+m_nc+m_aft_vp
+m_struct = (m_thrust_struct+m_engine+m_o_tank+m_f_tank+m_valves+m_nc+m_aft_vp)*DRY_MASS_GROWTH_FACTOR
 
 m_wet = m_propellant_i+m_struct+m_p_i
 m_dry = m_struct+m_p_i  # assume worst case all pressurant stays onboard
@@ -87,7 +94,8 @@ m_dry = m_struct+m_p_i  # assume worst case all pressurant stays onboard
 mdot_t = mdot_f+mdot_o  # total propellant flowrate
 
 ## Trajectory Sim & Analysis ##
-traj = _1D_rocket_traj(m_wet,m_dry,mdot_t,thrust,A_cs)
+traj = _1D_rocket_traj(m_wet,m_dry,mdot_t,thrust,A_cs,
+                       PLOT=PLOT_TRAJECTORY)
 alt_max = np.round(max(traj['x']))
 vel_max = np.round(max(traj['v']),2)
 
@@ -108,7 +116,8 @@ print(f'\n##########################################################\n'
       f'>> Chamber Pressure = {PC} [bar] - ({np.round(PC*BAR2PSI)} [psia]) -- MR = {MR}\n'
       f'>> Burn Time = {burntime} [s]\n'
       f'>> Pressurant: {PRESSGASS}\n'
-      f'>> Vehicle Diameter: {skin_OD} [mm] - ({np.round(skin_OD/25.4,3)} [in])')
+      f'>> Vehicle Diameter: {skin_OD} [mm] - ({np.round(skin_OD/25.4,3)} [in])\n'
+      f'>> DRY MASS MULT = {DRY_MASS_GROWTH_FACTOR} [-]')
 
 print(f'\n##########################################################\n'
       f'VEHICLE SIZING OUTPUTS:'
@@ -124,17 +133,17 @@ print(f'\n##########################################################\n'
       f'>> ALTITUDE ACHIEVED = {alt_max} [m]\n'
       f'>> MAX VELOCITY = {vel_max} [m/s]\n')
 
+if PLOT_VEHICLE:
+    fig, ax = plt.subplots(figsize=(16,6))
+    left = 0.0
+    for element in [l_engine,l_thrust_struct,l_aft_vp,L_o_tank,0.308,L_f_tank]:
+        ax.barh(0.0,element,height=skin_OD/1000,left=left,label=str(np.round(element,3)))
+        left = left+element
 
-fig, ax = plt.subplots(figsize=(16,6))
-left = 0.0
-for element in [l_engine,l_thrust_struct,l_aft_vp,L_o_tank,0.308,L_f_tank]:
-    ax.barh(0.0,element,height=skin_OD/1000,left=left,label=str(np.round(element,3)))
-    left = left+element
-
-ax.legend()
-ax.set_title('Approximate Rocket Dimensions\n'
-             f'DIA = {skin_OD} [mm]  --  {skin_OD/25.4} [in]\n'
-             f'LEN = {left} [m]  --  {left*METERS2FEET} [ft]\n'
-             f'Aspect Ratio: {left/(skin_OD/1000)} [-]')
-ax.axis('equal')
-plt.tight_layout
+    ax.legend()
+    ax.set_title('Approximate Rocket Dimensions\n'
+                 f'DIA = {skin_OD} [mm]  --  {skin_OD/25.4} [in]\n'
+                 f'LEN = {left} [m]  --  {left*METERS2FEET} [ft]\n'
+                 f'Aspect Ratio: {left/(skin_OD/1000)} [-]')
+    ax.axis('equal')
+    plt.tight_layout
