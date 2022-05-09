@@ -1,0 +1,8 @@
+; Trants thusfar untitled engine
+; Kerosene/LOX - 3kN x 16s = 48000s impulse
+; Created by Trenton Charlson; 05/2022
+trant 10 200 P 20.98 0.2 TEC
+  0.01 3000
+  16.0 3000
+  16.1 0 
+;

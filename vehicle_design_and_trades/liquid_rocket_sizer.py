@@ -17,9 +17,9 @@ from sizing_constants import *
 
 ## CTRL PARAMS ##
 PLOT_PRESSURANT_SENSITIVITY = False
-PLOT_VEHICLE = False
+PLOT_VEHICLE = True
 PLOT_TRAJECTORY = True
-PRINT_RESULTS = False
+PRINT_RESULTS = True
 
 ## TOP LEVEL PARAMS ##
 PC = 20.0 # bars
@@ -33,7 +33,7 @@ fac_CR = 8.0 # face contraction ratio
 
 DRY_MASS_GROWTH_FACTOR = 1.30  # spoof for future mass growth
 
-burntime = 18.0 # seconds
+burntime = 16.0 # seconds
 P_p_BOL = np.round(4500/BAR2PSI,2) # beginning bottle pressure
 PRESSGASS = 'He'
 
