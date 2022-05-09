@@ -3,7 +3,21 @@ Constant params to import as part of higher level vehicle sizing script
 """
 import numpy as np
 
-# Pressure Ladder
+# Conversion Factors #
+BAR2PSI = 14.5038
+METERS2FEET = 3.281
+NEWTON2LBF = 0.224809
+
+# Propellants:
+rho_o = 1141.0 #kg/m**3
+rho_f = 800.0 # kg/m**3
+
+# Pressurant
+T_p_LOAD = 300 #K - pressurant load temp
+press_margin = 5.0 #bar - WAG - need to anchor to avail Kv
+vol_sweep = np.linspace(10.0,60.0,num=3)/1000 # liters -> m**3
+
+# Pressure Ladder #
 f_inj_stiff = 20.0 # percent
 f_reg_stiff = 15.0 # percent
 o_inj_stiff = 20.0 # percent

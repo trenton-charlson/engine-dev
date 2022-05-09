@@ -13,31 +13,18 @@ from engine_design_code import engine_sizing_run
 from _1D_rocket_traj import _1D_rocket_traj
 from sizing_constants import *
 
-BAR2PSI = 14.5038
-METERS2FEET = 3.281
-NEWTON2LBF = 0.224809
-
 ## TOP LEVEL PARAMS ##
-"""
-thrust = 3000 N
-burntime = 15 sec
-alt_target = 
-
-mdot_o
-mdot_f
-"""
 PC = 20.0 # bars
 P_exit = 1.01325 #bars
 thrust = 2250 # newton
 MR = 1.7 # mixture ratio
-
 ffc_pct = 0.15 # % film coolant mass flow
-
 oxidizer = engine_sizing_run.propellant('LOX')
 fuel = engine_sizing_run.propellant('Kerosene')
 fac_CR = 8.0 # face contraction ratio
 
 burntime = 20.0 # seconds
+P_p_BOL = np.round(4500/BAR2PSI,2) # beginning bottle pressure
 PRESSGASS = 'He'
 
 # Run high level engine sizer to extract flowrates
@@ -56,12 +43,10 @@ print(f'mdot_f (ideal) = {mdot_fuel_ideal} kg/s')
 print(f'mdot_f (total, w/ film cooling) = {mdot_fuel_regen} kg/s')
 print(f'mdot_o (ideal) = {mdot_o} kg/s')
 
-rho_o = 1141.0 #kg/m**3
 q_ox = mdot_o/rho_o # m**3/s
 V_ox_i = q_ox*burntime
 m_o_i = mdot_o*burntime
 
-rho_f = 800.0 # kg/m**3
 q_f = mdot_f/rho_f # m**3/s
 V_f_i = q_f*burntime
 m_f_i = mdot_f*burntime
@@ -76,13 +61,8 @@ P_o_inlet = copy.copy(P_o_inj)
 P_o_tank = P_o_inlet+lineloss_o
 P_f_tank = P_f_inlet+lineloss_f
 
-# Pressurant
-press_margin = 5.0 #bar - WAG - need to anchor to avail Kv
+# Pressurant (rest in constants)
 P_p_EOL = np.round(max(P_f_tank,P_o_tank) + press_margin)
-P_p_BOL = np.round(4500/BAR2PSI,2) # beginning bottle pressure
-T_p_LOAD = 300 #K - pressurant load temp
-vol_sweep = np.linspace(10.0,60.0,num=3)/1000 # liters -> m**3
-
 
 L_o_tank = (V_ox_i*ullage_frac_o)/tank_AInternal
 m_o_tank = mass_tank_segment(L_o_tank,tank_LW,skin_LW)
