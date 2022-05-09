@@ -16,7 +16,7 @@ from sizing_constants import *
 ## TOP LEVEL PARAMS ##
 PC = 20.0 # bars
 P_exit = 1.01325 #bars
-thrust = 2250 # newton
+thrust = 3000 # newton
 MR = 1.7 # mixture ratio
 ffc_pct = 0.15 # % film coolant mass flow
 oxidizer = engine_sizing_run.propellant('LOX')
@@ -31,17 +31,11 @@ PRESSGASS = 'He'
 eng, T_c, T_t, R_specific, k, opt_expansion, v_e_ideal = \
         engine_sizing_run.size_combustor(PC, MR, thrust, fac_CR, oxidizer, fuel, P_exit/PC)
 
-print('\n### COMBUSTOR MASS FLOWS ###')
 mdot_ideal_total = thrust/v_e_ideal
-print(f'mdot_ideal_total = {mdot_ideal_total} kg/s\n')
-
 mdot_o = (MR/(1+MR))*mdot_ideal_total
 mdot_fuel_ideal = mdot_ideal_total - mdot_o
 mdot_fuel_regen = mdot_fuel_ideal*(1+ffc_pct)
 mdot_f = copy.copy(mdot_fuel_regen)
-print(f'mdot_f (ideal) = {mdot_fuel_ideal} kg/s')
-print(f'mdot_f (total, w/ film cooling) = {mdot_fuel_regen} kg/s')
-print(f'mdot_o (ideal) = {mdot_o} kg/s')
 
 q_ox = mdot_o/rho_o # m**3/s
 V_ox_i = q_ox*burntime
@@ -100,9 +94,18 @@ vel_max = np.round(max(traj['v']),2)
 ## PRINT RESULTS ##
 
 print(f'\n##########################################################\n'
+      f'COMBUSTOR MASS FLOWS:'
+      f'\n##########################################################\n\n'
+      f'>> mdot_ideal_total = {mdot_ideal_total} kg/s\n'
+      f'>> mdot_f (ideal) = {mdot_fuel_ideal} kg/s\n'
+      f'>> mdot_f (total, w/ film cooling) = {mdot_fuel_regen} kg/s\n'
+      f'>> mdot_o (ideal) = {mdot_o} kg/s')
+
+print(f'\n##########################################################\n'
       f'VEHICLE SIZING INPUTS:'
       f'\n##########################################################\n\n'
       f'>> Thrust = {thrust} [N] - ({np.round(thrust*NEWTON2LBF)} [lbf])\n'
+      f'>> Chamber Pressure = {PC} [bar] - ({np.round(PC*BAR2PSI)} [psia]) -- MR = {MR}\n'
       f'>> Burn Time = {burntime} [s]\n'
       f'>> Pressurant: {PRESSGASS}\n'
       f'>> Vehicle Diameter: {skin_OD} [mm] - ({np.round(skin_OD/25.4,3)} [in])')
