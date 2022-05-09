@@ -11,6 +11,7 @@ from feed_system_design_code import gas_dyn_utils
 from vehicle_sizing_functions import mass_tank_segment
 from engine_design_code import engine_sizing_run
 from _1D_rocket_traj import _1D_rocket_traj
+from sizing_constants import *
 
 BAR2PSI = 14.5038
 METERS2FEET = 3.281
@@ -39,11 +40,6 @@ fac_CR = 8.0 # face contraction ratio
 burntime = 20.0 # seconds
 PRESSGASS = 'He'
 
-# Pressure Ladder
-f_inj_stiff = 20.0 # percent
-f_reg_stiff = 15.0 # percent
-o_inj_stiff = 20.0 # percent
-
 # Run high level engine sizer to extract flowrates
 eng, T_c, T_t, R_specific, k, opt_expansion, v_e_ideal = \
         engine_sizing_run.size_combustor(PC, MR, thrust, fac_CR, oxidizer, fuel, P_exit/PC)
@@ -60,14 +56,11 @@ print(f'mdot_f (ideal) = {mdot_fuel_ideal} kg/s')
 print(f'mdot_f (total, w/ film cooling) = {mdot_fuel_regen} kg/s')
 print(f'mdot_o (ideal) = {mdot_o} kg/s')
 
-# Size Engine Flowrates
-#mdot_o = 0.586 # kg/s
 rho_o = 1141.0 #kg/m**3
 q_ox = mdot_o/rho_o # m**3/s
 V_ox_i = q_ox*burntime
 m_o_i = mdot_o*burntime
 
-#mdot_f = 0.396 # kg/s
 rho_f = 800.0 # kg/m**3
 q_f = mdot_f/rho_f # m**3/s
 V_f_i = q_f*burntime
@@ -78,14 +71,6 @@ P_f_inj = (1+(f_inj_stiff/100))*PC
 P_f_inlet = (1+(f_reg_stiff/100))*P_f_inj
 P_o_inj = (1+(o_inj_stiff/100))*PC
 P_o_inlet = copy.copy(P_o_inj)
-
-# Feed Losses/appx len
-fs_length_o = 0.5
-fs_length_f = 1.5
-floss_o = 0.271 #bar/meter
-floss_f = 0.257 #bar/meter
-lineloss_o = floss_o*fs_length_o
-lineloss_f = floss_f*fs_length_f
 
 # Tankage Pressures
 P_o_tank = P_o_inlet+lineloss_o
@@ -98,91 +83,6 @@ P_p_BOL = np.round(4500/BAR2PSI,2) # beginning bottle pressure
 T_p_LOAD = 300 #K - pressurant load temp
 vol_sweep = np.linspace(10.0,60.0,num=3)/1000 # liters -> m**3
 
-## ENGINE ##
-"""
-Handcalc from 05/07/22 - ~4kg
-"""
-m_engine = 4.0 # kg
-l_engine = 0.230 # meters
-
-## THRUST STRUCTURE ##
-"""
-Handcalc from 05/07/22 - ~0.95kg
-"""
-m_thrust_struct = 0.95 # kg
-l_thrust_struct = 5.0*25.4/1000 # m baseline
-
-## Aft Valve Pack ##
-m_aft_vp = 2.5 # kg
-l_aft_vp = 8.0*25.4/1000
-
-## PLUMBING ##
-"""
-Aqua dome reg: 1783 - 0.76 kg
-Aqua pilot reg: 1247-1 - 0.15 kg
-Aqua check:  684 - 0.14 kg
-"""
-
-beta_valve = 2.0
-m_valves = 2.1*beta_valve # kg
-
-## AIRFRAME ##
-"""
--- 7.5" fiberglass tubing --
-ID: 7.520" => 191 mm
-OD: 7.708" => 195.78 mm
-lin_wt = 18.8 oz/ft = 1.175lb/ft => 0.533 kg/ft => 1.748 kg/m
-^^ this is less than 6"....
-spoof in 3kg/m for now
-==> 1/10.755 conversion factor from oz/ft -> kg/m
-
--- 6" fiberglass tubing
-ID: 6.00" => 152.4 mm
-OD: 6.17" => 156.718mm
-lin_wt = 24.30 oz/ft 
-"""
-skin_ID = 191 # mm
-skin_OD = 195.78 # mm
-skin_LW = 1.748 # kg/m
-
-A_cs = np.pi*(skin_OD/(2*1000))**2
-
-# Nosecone - WAG for now
-m_nc = 2.0 #kg
-
-## TANKAGE ##
-"""
-4" SCH10 SS:
-OD = 4.500 => 114.3mm
-wt = 3.05mm
-lin_wt = 8.42 kg/m
-
-5" SCH10 SS:
-OD = 5.563" => 141.3mm
-wt = 3.4mm
-lin_wt = 11.64 kg/m
-
-6" SCH10 SS:
-OD = 6.625" => 168.3mm
-wt = 3.4mm
-lin_wt = 13.91 kg/m
-
-6" SCH5 SS
-OD = 6.625" => 168.3mm
-wt = 2.77mm (0.109")
-lin_wt = 11.29
-
-"""
-
-tank_OD = 168.3 # mm
-tank_WT = 3.4 # mm
-tank_ID = tank_OD-(2*tank_WT)
-tank_LW = 13.91
-
-tank_AInternal = np.pi*(tank_ID/(1000*2))**2 # m**2
-
-ullage_frac_o = 1.3
-ullage_frac_f = 1.15
 
 L_o_tank = (V_ox_i*ullage_frac_o)/tank_AInternal
 m_o_tank = mass_tank_segment(L_o_tank,tank_LW,skin_LW)
