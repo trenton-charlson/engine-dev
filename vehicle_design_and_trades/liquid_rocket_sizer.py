@@ -19,6 +19,7 @@ from sizing_constants import *
 PLOT_PRESSURANT_SENSITIVITY = False
 PLOT_VEHICLE = False
 PLOT_TRAJECTORY = True
+PRINT_RESULTS = False
 
 ## TOP LEVEL PARAMS ##
 PC = 20.0 # bars
@@ -34,7 +35,7 @@ DRY_MASS_GROWTH_FACTOR = 1.30  # spoof for future mass growth
 
 burntime = 18.0 # seconds
 P_p_BOL = np.round(4500/BAR2PSI,2) # beginning bottle pressure
-PRESSGASS = 'N2'
+PRESSGASS = 'He'
 
 # Run high level engine sizer to extract flowrates
 eng, T_c, T_t, R_specific, k, opt_expansion, v_e_ideal = \
@@ -102,38 +103,38 @@ alt_max = np.round(max(traj['x']))
 vel_max = np.round(max(traj['v']),2)
 
 ## PRINT RESULTS ##
+if PRINT_RESULTS:
+    print(f'\n##########################################################\n'
+          f'COMBUSTOR MASS FLOWS:'
+          f'\n##########################################################\n\n'
+          f'>> mdot_ideal_total = {mdot_ideal_total} kg/s\n'
+          f'>> mdot_f (ideal) = {mdot_fuel_ideal} kg/s\n'
+          f'>> mdot_f (total, w/ film cooling) = {mdot_fuel_regen} kg/s\n'
+          f'>> mdot_o (ideal) = {mdot_o} kg/s')
 
-print(f'\n##########################################################\n'
-      f'COMBUSTOR MASS FLOWS:'
-      f'\n##########################################################\n\n'
-      f'>> mdot_ideal_total = {mdot_ideal_total} kg/s\n'
-      f'>> mdot_f (ideal) = {mdot_fuel_ideal} kg/s\n'
-      f'>> mdot_f (total, w/ film cooling) = {mdot_fuel_regen} kg/s\n'
-      f'>> mdot_o (ideal) = {mdot_o} kg/s')
+    print(f'\n##########################################################\n'
+          f'VEHICLE SIZING INPUTS:'
+          f'\n##########################################################\n\n'
+          f'>> Thrust = {thrust} [N] - ({np.round(thrust*NEWTON2LBF)} [lbf])\n'
+          f'>> Chamber Pressure = {PC} [bar] - ({np.round(PC*BAR2PSI)} [psia]) -- MR = {MR}\n'
+          f'>> Burn Time = {burntime} [s]\n'
+          f'>> Pressurant: {PRESSGASS}\n'
+          f'>> Vehicle Diameter: {skin_OD} [mm] - ({np.round(skin_OD/25.4,3)} [in])\n'
+          f'>> DRY MASS MULT = {DRY_MASS_GROWTH_FACTOR} [-]')
 
-print(f'\n##########################################################\n'
-      f'VEHICLE SIZING INPUTS:'
-      f'\n##########################################################\n\n'
-      f'>> Thrust = {thrust} [N] - ({np.round(thrust*NEWTON2LBF)} [lbf])\n'
-      f'>> Chamber Pressure = {PC} [bar] - ({np.round(PC*BAR2PSI)} [psia]) -- MR = {MR}\n'
-      f'>> Burn Time = {burntime} [s]\n'
-      f'>> Pressurant: {PRESSGASS}\n'
-      f'>> Vehicle Diameter: {skin_OD} [mm] - ({np.round(skin_OD/25.4,3)} [in])\n'
-      f'>> DRY MASS MULT = {DRY_MASS_GROWTH_FACTOR} [-]')
-
-print(f'\n##########################################################\n'
-      f'VEHICLE SIZING OUTPUTS:'
-      f'\n##########################################################\n\n'
-      f'>> Propellant Mass = {m_propellant_i} [kg]\n'
-      f'>> Pressurant Mass = {m_p_i} [kg]\n'
-      f'>> Structural Mass = {np.round(m_struct,2)} [kg]\n'
-      f'>> TOTAL LIFTOFF MASS = {np.round(m_wet,2)} [kg]\n'
-      f'>> TOTAL DRY MASS = {np.round(m_dry,2)} [kg]\n'
-      f'>> PROPELLANT MASS FRACTION = {np.round(m_propellant_i/m_wet,2)}\n'
-      f'>> LIFTOFF TWR = {np.round(thrust/(9.81*m_wet),2)} [-]\n'
-      f'\n'
-      f'>> ALTITUDE ACHIEVED = {alt_max} [m]\n'
-      f'>> MAX VELOCITY = {vel_max} [m/s]\n')
+    print(f'\n##########################################################\n'
+          f'VEHICLE SIZING OUTPUTS:'
+          f'\n##########################################################\n\n'
+          f'>> Propellant Mass = {m_propellant_i} [kg]\n'
+          f'>> Pressurant Mass = {m_p_i} [kg]\n'
+          f'>> Structural Mass = {np.round(m_struct,2)} [kg]\n'
+          f'>> TOTAL LIFTOFF MASS = {np.round(m_wet,2)} [kg]\n'
+          f'>> TOTAL DRY MASS = {np.round(m_dry,2)} [kg]\n'
+          f'>> PROPELLANT MASS FRACTION = {np.round(m_propellant_i/m_wet,2)}\n'
+          f'>> LIFTOFF TWR = {np.round(thrust/(9.81*m_wet),2)} [-]\n'
+          f'\n'
+          f'>> ALTITUDE ACHIEVED = {alt_max} [m]\n'
+          f'>> MAX VELOCITY = {vel_max} [m/s]\n')
 
 if PLOT_VEHICLE:
     fig, ax = plt.subplots(figsize=(16,6))

@@ -155,11 +155,12 @@ def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
                                P_ot,q_dot_oto,
                                P_ft,q_dot_fto,
                                burntime,
-                               PLOT=True):
+                               PLOT=True,PRINT=False):
 
-    print(f'Performing Pressurant System Analysis for:\n'
-          f'P_targets = {p_start}\n'
-          f'Volume range: {min(vol)*1000} -> {max(vol)*1000} [L] - npts: {len(vol)}')
+    if PRINT:
+        print(f'Performing Pressurant System Analysis for:\n'
+              f'P_targets = {p_start}\n'
+              f'Volume range: {min(vol)*1000} -> {max(vol)*1000} [L] - npts: {len(vol)}')
 
     markers = itertools.cycle((',', '+', '.', 'o', '*'))
     if PLOT:
@@ -172,7 +173,8 @@ def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
         He_df = pd.DataFrame(index=vol)
         marker = next(markers)
 
-        print(f'Solving for {p} Bar Bottle Pressure')
+        if PRINT:
+            print(f'Solving for {p} Bar Bottle Pressure')
 
         for v in tqdm(vol):
             # calc for nitrogen
