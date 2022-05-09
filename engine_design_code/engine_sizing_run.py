@@ -4,10 +4,12 @@ Top level function(s) for defining engine sizing & outputs
 
 from rocketcea.cea_obj import CEA_Obj as CEA_Obj_english
 from rocketcea.cea_obj_w_units import CEA_Obj
-from constants import R_const, g
-
 import numpy as np
 
+import engine_design_code.constants
+
+R_const = engine_design_code.constants.R_const
+g = engine_design_code.constants.g
 
 def dump():
     combustor_std = CEA_Obj_english(oxName=ox.name, fuelName=fuel.name,

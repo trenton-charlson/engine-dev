@@ -9,11 +9,12 @@ import numpy as np
 
 from feed_system_design_code import gas_dyn_utils
 from vehicle_sizing_functions import mass_tank_segment
-
+from engine_design_code import engine_sizing_run
 from _1D_rocket_traj import _1D_rocket_traj
 
 BAR2PSI = 14.5038
 METERS2FEET = 3.281
+NEWTON2LBF = 0.224809
 
 ## TOP LEVEL PARAMS ##
 """
@@ -25,7 +26,16 @@ mdot_o
 mdot_f
 """
 PC = 20.0 # bars
+P_exit = 1.01325 #bars
 thrust = 2250 # newton
+MR = 1.7 # mixture ratio
+
+ffc_pct = 0.15 # % film coolant mass flow
+
+oxidizer = engine_sizing_run.propellant('LOX')
+fuel = engine_sizing_run.propellant('Kerosene')
+fac_CR = 8.0 # face contraction ratio
+
 burntime = 20.0 # seconds
 PRESSGASS = 'He'
 
@@ -34,14 +44,30 @@ f_inj_stiff = 20.0 # percent
 f_reg_stiff = 15.0 # percent
 o_inj_stiff = 20.0 # percent
 
-# Engine Flowrates
-mdot_o = 0.586 # kg/s
+# Run high level engine sizer to extract flowrates
+eng, T_c, T_t, R_specific, k, opt_expansion, v_e_ideal = \
+        engine_sizing_run.size_combustor(PC, MR, thrust, fac_CR, oxidizer, fuel, P_exit/PC)
+
+print('\n### COMBUSTOR MASS FLOWS ###')
+mdot_ideal_total = thrust/v_e_ideal
+print(f'mdot_ideal_total = {mdot_ideal_total} kg/s\n')
+
+mdot_o = (MR/(1+MR))*mdot_ideal_total
+mdot_fuel_ideal = mdot_ideal_total - mdot_o
+mdot_fuel_regen = mdot_fuel_ideal*(1+ffc_pct)
+mdot_f = copy.copy(mdot_fuel_regen)
+print(f'mdot_f (ideal) = {mdot_fuel_ideal} kg/s')
+print(f'mdot_f (total, w/ film cooling) = {mdot_fuel_regen} kg/s')
+print(f'mdot_o (ideal) = {mdot_o} kg/s')
+
+# Size Engine Flowrates
+#mdot_o = 0.586 # kg/s
 rho_o = 1141.0 #kg/m**3
 q_ox = mdot_o/rho_o # m**3/s
 V_ox_i = q_ox*burntime
 m_o_i = mdot_o*burntime
 
-mdot_f = 0.396 # kg/s
+#mdot_f = 0.396 # kg/s
 rho_f = 800.0 # kg/m**3
 q_f = mdot_f/rho_f # m**3/s
 V_f_i = q_f*burntime
@@ -141,6 +167,11 @@ OD = 6.625" => 168.3mm
 wt = 3.4mm
 lin_wt = 13.91 kg/m
 
+6" SCH5 SS
+OD = 6.625" => 168.3mm
+wt = 2.77mm (0.109")
+lin_wt = 11.29
+
 """
 
 tank_OD = 168.3 # mm
@@ -191,7 +222,7 @@ vel_max = np.round(max(traj['v']),2)
 print(f'\n##########################################################\n'
       f'VEHICLE SIZING INPUTS:'
       f'\n##########################################################\n\n'
-      f'>> Thrust = {thrust} [N]\n'
+      f'>> Thrust = {thrust} [N] - ({np.round(thrust*NEWTON2LBF)} [lbf])\n'
       f'>> Burn Time = {burntime} [s]\n'
       f'>> Pressurant: {PRESSGASS}\n'
       f'>> Vehicle Diameter: {skin_OD} [mm] - ({np.round(skin_OD/25.4,3)} [in])')

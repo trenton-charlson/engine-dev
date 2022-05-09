@@ -1,5 +1,5 @@
 """
-1D Trajectory Analysis Tools
+1D Trajectory Analysis Function
 """
 
 import pandas as pd
@@ -77,7 +77,7 @@ def _1D_rocket_traj(mwet,mdry,mdot,thrust,A_cs,
         t = t+ts
 
     if PLOT:
-        fig, (ax0, ax1, ax2, ax3) = plt.subplots(4, 1, figsize=(10,6), sharex=True)
+        fig, (ax0, ax1, ax2, ax3) = plt.subplots(4, 1, figsize=(9,12), sharex=True)
         ax0.plot(traj['x'], label='Altitude')
         ax0.set_ylabel('Altitude [m]')
         ax1.plot(traj['v'], label='Velocity')

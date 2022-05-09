@@ -4,27 +4,20 @@ Engine Design Code Top Level Script
 author: tcharlson
 """
 
+# Public Modules
 import copy
 import os
-
 import numpy as np
 from scipy.optimize import fsolve
 from tqdm import tqdm
 
-
-from rocketcea.cea_obj import CEA_Obj as CEA_Obj_english
-from rocketcea.cea_obj_w_units import CEA_Obj
-
+# Custom Modules
 from geometry import chamber_geo, define_contour, plot_chamber_param
 from nozzle_thermo import chamber_thermo_calcs, t_adiabatic_wall, gnielinski_calc, plot_chamber_thermo, \
                           func_bartz_root_find, load_regen_geometry, soot_thermal_resistance
-
-from ethanol_props import get_ethanol_props_SI
 from kerosene_props import get_jet_a_properties
-
 from engine_sizing_run import size_combustor, propellant
 
-from constants import R_const, g
 
 ### DEFINE TOP LEVEL PARAMETERS ###
 fuel = propellant("Kerosene")
@@ -52,7 +45,6 @@ nozzle_ha = 15.0 #degrees, nozzle half angle; conical nozzle
 L_star = 1.15 #meters - http://mae-nas.eng.usu.edu/MAE_5540_Web/propulsion_systems/section6/section.6.1.pdf guess for now
 npts = 100 #number of points to define each contour section
 
-FULL_OUTPUT = False
 BAR = True
 DEBUG = False
 
@@ -74,8 +66,6 @@ print(f'mdot_f (ideal) = {mdot_fuel_ideal} kg/s')
 print(f'mdot_f (regen) = {mdot_fuel_regen} kg/s')
 print(f'mdot_f_ffc = {mdot_fuel_ideal*ffc_pct} kg/s')
 print(f'mdot_o (ideal) = {mdot_ox_ideal} kg/s')
-
-
 
 A_t = (mdot_ideal_total/(Pc*10**5))*np.sqrt((R_specific*T_c)/(k*((2/(k+1))**((k+1)/(k-1)))))
 #A_t_cm = A_t*(100**2)
@@ -193,7 +183,6 @@ for i in tqdm(range(len(chamber.index))[::-1]):
                 k,
                 chamber.at[i, 'R_soot']) #create args for solver
 
-
         qmod = 1.0
         root = fsolve(func_bartz_root_find,HT_SOLVE_GUESS,args=data)
         chamber.at[i, 'T_wg'] = root[0]
@@ -206,29 +195,14 @@ for i in tqdm(range(len(chamber.index))[::-1]):
         if DEBUG:
             print(root)
 
-
-
     else:
+        # populate final station with non-NAN values
         keys = [key for key in chamber.keys() if key not in ['x', 'r', 'theta', 'eps', 'regime']]
         for key in keys:
             chamber.at[i,key] = chamber.at[i+1,key]
 
-
-
-#plot_chamber_param(chamber,'q','W/m**2')
-#plot_chamber_param(chamber,'T_wc','K')
-#plot_chamber_param(chamber,'w_fin','mm')
 plot_chamber_thermo(chamber)
-
 print(f'Chamber OD w/Cooling = {np.round(np.max(chamber["r_outer"]),2)*2} [mm]')
-
-#print(chamber)
 chamber.to_csv(os.path.join(os.getcwd(),'output','chamber_final.csv'))
-
-
-if FULL_OUTPUT:
-    print(combustor_std.get_full_cea_output(Pc=Pc, MR=MR,
-                                            pc_units='bar',
-                                            PcOvPe=1/pressure_ratio))
 
 
