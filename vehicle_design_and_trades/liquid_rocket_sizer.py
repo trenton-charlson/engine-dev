@@ -3,10 +3,12 @@ Size out rocket design based on high level input parameters
 
 future: perform trajectory sim & iterative analysis
 """
+
+# std packages
 import copy
 import matplotlib.pyplot as plt
-import numpy as np
 
+# custom packages
 from feed_system_design_code import gas_dyn_utils
 from vehicle_sizing_functions import mass_tank_segment
 from engine_design_code import engine_sizing_run
@@ -94,7 +96,7 @@ m_dry = m_struct+m_p_i  # assume worst case all pressurant stays onboard
 mdot_t = mdot_f+mdot_o  # total propellant flowrate
 
 ## Trajectory Sim & Analysis ##
-traj = _1D_rocket_traj(m_wet,m_dry,mdot_t,thrust,A_cs,
+traj = _1D_rocket_traj(m_wet, m_dry, mdot_t, thrust, A_cs,
                        PLOT=PLOT_TRAJECTORY)
 alt_max = np.round(max(traj['x']))
 vel_max = np.round(max(traj['v']),2)
