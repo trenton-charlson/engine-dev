@@ -16,7 +16,7 @@ from _1D_rocket_traj import _1D_rocket_traj
 from sizing_constants import *
 
 ## CTRL PARAMS ##
-PLOT_PRESSURANT_SENSITIVITY = False
+PLOT_PRESSURANT_SENSITIVITY = True
 PLOT_VEHICLE = True
 PLOT_TRAJECTORY = True
 PRINT_RESULTS = True

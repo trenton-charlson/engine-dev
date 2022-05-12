@@ -71,11 +71,14 @@ spoof in 3kg/m for now
 -- 6" fiberglass tubing
 ID: 6.00" => 152.4 mm
 OD: 6.17" => 156.718mm
-lin_wt = 24.30 oz/ft 
+lin_wt = 24.30 oz/ft ==> from composites warehouse. 
+hack in  
+
 """
+skin_MATL = '6in_Fiberglass'
 skin_ID = 191 # mm
 skin_OD = 195.78 # mm
-skin_LW = 1.748 # kg/m
+skin_LW = 2.26 # kg/m
 
 A_cs = np.pi*(skin_OD/(2*1000))**2
 
@@ -105,11 +108,11 @@ wt = 2.77mm (0.109")
 lin_wt = 11.29
 
 """
-
-tank_OD = 168.3 # mm
-tank_WT = 3.4 # mm
+tank_MATL = '5in065_pipe'
+tank_OD = 127 # mm
+tank_WT = 1.65 # mm
 tank_ID = tank_OD-(2*tank_WT)
-tank_LW = 13.91
+tank_LW = 5.201
 
 tank_AInternal = np.pi*(tank_ID/(1000*2))**2 # m**2
 

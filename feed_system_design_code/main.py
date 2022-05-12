@@ -7,9 +7,9 @@ from gas_dyn_utils import isenthalpic_throttle, regulator_blowdown_rocket, m3s_2
 
 import CoolProp.CoolProp as CP
 
-GAS = 'Nitrogen'
+GAS = 'He'
 T_bulk = 300 #K
-burntime = 15
+burntime = 16
 
 #P_start = 131.0 #bar - ~1900 psi bottle load pressure
 P_start = 250.0 #bar - ~4500 psi bottle load pressure
@@ -24,11 +24,11 @@ t = 0.0
 
 MOL_stp = 22.4
 
-mdot_fto = 0.439 #kg/s
+mdot_fto = 0.529 #kg/s
 rho_f = 800.0 #kg/m**3
 q_dot_fto = mdot_fto/rho_f # m**3 / s
 
-mdot_oto = 0.73 #kg/s
+mdot_oto = 0.782 #kg/s
 rho_o = 1141.0 #kg/m**3
 q_dot_oto = mdot_oto/rho_o # m**3 / s
 

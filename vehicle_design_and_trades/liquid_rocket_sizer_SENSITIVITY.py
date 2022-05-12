@@ -9,6 +9,8 @@ import copy
 import matplotlib.pyplot as plt
 import itertools
 markers = itertools.cycle((',', '+', '.', 'o', '*'))
+import os
+outputdir = os.path.join(os.getcwd(),'outputs')
 
 # custom packages
 import pandas as pd
@@ -189,5 +191,10 @@ ax2.grid()
 ax2.set_xlabel('burn_time [s]')
 ax1.set_ylabel('alt [m]')
 ax2.set_ylabel('wet mass [kg]')
-fig1.suptitle('Burn Time vs Thrust Trade')
-
+fig1.suptitle('Burn Time vs Thrust Trade\n'
+              f'{thrust_sweep[0]}N - {thrust_sweep[-1]}N Thrust\n'
+              f'{bt_sweep[0]}s - {bt_sweep[-1]}s Burn Time\n'
+              f'Tanks: {tank_MATL}\n'
+              f'Airframe: {skin_MATL}')
+output_fn = f'sensitivity_study_{thrust_sweep[0]}N-{thrust_sweep[-1]}N_{bt_sweep[0]}s-{bt_sweep[-1]}s_{tank_MATL}_{skin_MATL}.png'
+plt.savefig(os.path.join(outputdir,output_fn))
