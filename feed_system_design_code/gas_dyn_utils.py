@@ -162,7 +162,7 @@ def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
               f'P_targets = {p_start}\n'
               f'Volume range: {min(vol)*1000} -> {max(vol)*1000} [L] - npts: {len(vol)}')
 
-    markers = itertools.cycle((',', '+', '.', 'o', '*'))
+    markers = itertools.cycle(('*', 'x', '.', 'o', ','))
     if PLOT:
         fig1, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(9,12), sharex=False)
 
@@ -207,10 +207,10 @@ def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
             out_df.at[p,'He Mass Residual'] = np.interp(he_vol_req,He_df.index*1000,He_df['mass_f'])
 
         if PLOT:
-            ax1.plot(N2_df.index * 1000, N2_df['time'], marker=marker, c='g', label=f'Nitrogen - {p} Bar')
-            ax1.plot(He_df.index * 1000, He_df['time'], marker=marker, c='magenta', label=f'Helium - {p} Bar')
-            ax2.plot(N2_df.index * 1000, N2_df['mass_i'], marker=marker, c='g', label=f'Nitrogen - {p} Bar')
-            ax2.plot(He_df.index * 1000, He_df['mass_i'], marker=marker, c='magenta', label=f'Helium - {p} Bar')
+            ax1.plot(N2_df.index * 1000, N2_df['time'], marker=marker, c='g', markersize=8, label=f'Nitrogen - {p} Bar')
+            ax1.plot(He_df.index * 1000, He_df['time'], marker=marker, markersize=8, c='magenta', label=f'Helium - {p} Bar')
+            ax2.plot(N2_df.index * 1000, N2_df['mass_i'], marker=marker, markersize=8, c='g', label=f'Nitrogen - {p} Bar')
+            ax2.plot(He_df.index * 1000, He_df['mass_i'], marker=marker, markersize=8, c='magenta', label=f'Helium - {p} Bar')
 
     out_df = np.round(out_df,2)
 

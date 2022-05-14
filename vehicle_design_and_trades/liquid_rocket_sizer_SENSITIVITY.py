@@ -27,7 +27,7 @@ PLOT_TRAJECTORY = False
 PRINT_RESULTS = False
 
 ## TOP LEVEL PARAMS ##
-PC = 20.0 # bars
+PC = 21.0 # bars
 P_exit = 1.01325 #bars
 #thrust = 3000 # newton
 MR = 1.7 # mixture ratio

@@ -82,7 +82,7 @@ blowdown_biprop,t,m,_ = regulator_blowdown_rocket(P_start,T_bulk,P_end,
 
 # Blowdown Sensitivity Study #
 vol = np.linspace(10,100,num=10)/1000 # convert to m**3
-p_start = [130.0,200.0,300.0]
+p_start = [130.0,200.0,300.0,400.0]
 
 blowdown = blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
                                       P_ot, q_dot_oto,

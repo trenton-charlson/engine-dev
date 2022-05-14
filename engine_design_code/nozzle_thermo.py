@@ -114,6 +114,8 @@ def load_regen_geometry(chamber,fn):
     return chamber
 
 def plot_chamber_thermo(chamber):
+    i_n = chamber.index[-1] #grab max index
+
     fig1, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(nrows=3, ncols=2, figsize=(16,9), sharex=True)
     ax1.plot(chamber['x'], chamber['r'], c='k', lw=2)
     ax1.plot(chamber['x'], chamber['r_cool'], c='k', lw=1, ls=':')
@@ -127,7 +129,8 @@ def plot_chamber_thermo(chamber):
     ax2.plot(chamber['x'], chamber['T_wg'], c='r',lw=2,label='T_wg')
     ax2.plot(chamber['x'], chamber['T_wc'], c='cyan',lw=2,label='T_wc')
     ax21 = ax2.twinx()
-    ax21.plot(chamber['x'], chamber['dT_c'], c='magenta', lw=2, label='dT_c')
+    ax21.plot(chamber['x'], chamber['dT_c']/chamber['s'], c='magenta', lw=2, label='dT_c/dx')
+    ax21.plot(chamber['x'], chamber['dP_c']/chamber['s'], c='green', lw=2, label='dP_c/dx')
 
     ax3.plot(chamber['x'], chamber['mach'], c='r', lw=2, label='Mach Number - [-]')
     ax31 = ax3.twinx()
@@ -146,10 +149,29 @@ def plot_chamber_thermo(chamber):
     ax6.plot(chamber['x'], chamber['fin_thick'], c='r', label = 'Fin Wall Thickness [mm]')
     ax61 = ax6.twinx()
     ax61.plot(chamber['x'], chamber['u_c'], c='k', ls='-', label='Coolant Velocity - [m/s]')
+    ax61.plot(chamber['x'], chamber['P_c_e'], c='cyan', ls='-', label='Coolant Pressure - [Bar]')
 
 
+    # grids per Brandon Kan
+    ax1.grid()
+    ax1.set_xlim((0,chamber.at[i_n,'x']))
 
-    ax1.axis('equal')
+    ax2.grid()
+    ax2.set_xlim((0,chamber.at[i_n,'x']))
+
+    ax3.grid()
+    ax3.set_xlim((0,chamber.at[i_n,'x']))
+
+    ax4.grid()
+    ax4.set_xlim((0,chamber.at[i_n,'x']))
+
+    ax5.grid()
+    ax5.set_xlim((0,chamber.at[i_n,'x']))
+
+    ax6.grid()
+    ax6.set_xlim((0,chamber.at[i_n,'x']))
+
+    #ax1.axis('equal')
     ax11.legend()
     ax31.legend()
     ax21.legend()
@@ -160,15 +182,16 @@ def plot_chamber_thermo(chamber):
     ax5.legend()
     ax51.legend()
     ax61.legend()
-    ax3.set_xlabel('x - [mm]')
+    ax5.set_xlabel('x - [mm]')
+    ax6.set_xlabel('x - [mm]')
     ax1.set_ylabel('r - [mm]')
     ax4.set_ylabel('Channel Geo - [mm]')
     ax41.set_ylabel('Channel Count - [n]')
     ax2.set_ylabel(f'Regen Temps - [K]')
-    ax21.set_ylabel(f'Coolant dT - [K]')
+    ax21.set_ylabel(f'Coolant dT/dx., dP/dx - [K/mm], [BarA/mm]')
     ax3.set_ylabel(f'Regen Geo - [mm]')
     ax6.set_ylabel(f'Fin Thickness - [mm]')
-    ax61.set_ylabel(f'Coolant Velocity - [m/s]')
+    ax61.set_ylabel(f'Velocity, Pressure - [m/s], [BarA]')
     fig1.suptitle(f'Regen Cooling Properties\n'
                   f'Max Coolant Temp: {np.round(max(chamber["T_c_i"]),2)} [K]\n'
                   f'Max Wall Temp: {np.round(max(chamber["T_wg"]),2)} [K]\n'

@@ -19,7 +19,7 @@ vol_sweep = np.linspace(10.0,60.0,num=3)/1000 # liters -> m**3; should only need
 
 # Pressure Ladder #
 f_inj_stiff = 20.0 # percent
-f_reg_stiff = 15.0 # percent
+f_reg_stiff = 25.0 # percent
 o_inj_stiff = 20.0 # percent
 
 # Feed Losses/appx len

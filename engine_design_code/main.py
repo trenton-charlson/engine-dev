@@ -24,7 +24,7 @@ fuel = propellant("Kerosene")
 ox = propellant("LOX")
 
 ### PERFORMANCE PARAMS ###
-Pc = 20.0 #bar
+Pc = 21.0 #bar
 Pc_pa = Pc * 10**5 # chamber pressure in Pascals
 Pe = 1.01325 #bar
 thrust = 2250 #newton
@@ -44,6 +44,9 @@ chamber_ha = 30.0 #degrees, chamber half angle
 nozzle_ha = 15.0 #degrees, nozzle half angle; conical nozzle
 L_star = 1.15 #meters - http://mae-nas.eng.usu.edu/MAE_5540_Web/propulsion_systems/section6/section.6.1.pdf guess for now
 npts = 100 #number of points to define each contour section
+
+f_inj_stiff = 20.0 # percent
+P_f_inj = (1+(f_inj_stiff/100))*Pc
 
 BAR = True
 DEBUG = False
@@ -127,7 +130,7 @@ chamber['mdot_chan'] = mdot_fuel_regen/chamber['n_chan']
 T_eth_0 = 300 # K - assume roomish temp 70F
 i_n = len(chamber.index) - 1  # grab i of nth index
 # seed coolant temp params, and then set starting coolant temp
-for parm in ['T_c_i','dT_c','T_c_e']:
+for parm in ['T_c_i','dT_c','T_c_e','P_c_i','dP_c','P_c_e']:
     chamber[parm] = np.zeros(len(chamber.index))
 chamber.at[i_n,'T_c_i'] = T_eth_0
 
@@ -151,7 +154,8 @@ for i in tqdm(range(len(chamber.index))[::-1]):
         chamber.at[i,'dx'] = chamber.at[i,'x'] - chamber.at[i-1,'x'] # mm
         # Slant Area: https://www.calculatorsoup.com/calculators/geometry-solids/conicalfrustum.php
         # S = π * (r1 + r2) * s = π * (r1 + r2) * √((r1 - r2)2 + h2)
-        chamber.at[i, 'A_w_segment'] = np.pi * (chamber.at[i,'r']+chamber.at[i - 1,'r']) * np.sqrt(((chamber.at[i,'r']-chamber.at[i-1,'r'])**2)+chamber.at[i,'dx']**2) # mm**2
+        chamber.at[i,'s'] = np.sqrt(((chamber.at[i,'r']-chamber.at[i-1,'r'])**2)+chamber.at[i,'dx']**2) # mm - slant height/linear dist travelled
+        chamber.at[i, 'A_w_segment'] = np.pi * (chamber.at[i,'r']+chamber.at[i - 1,'r']) * chamber.at[i,'s'] # mm**2
         # Calc Adiabatic Wall Temp
         chamber.at[i,'T_aw'] = t_adiabatic_wall(T_c,Pr,M,k)
         chamber.at[i,'R_soot'] = soot_thermal_resistance(chamber.at[i,'eps'],chamber.at[i,'regime']) # (m**2 K)/W - Huzel & Huang
@@ -163,10 +167,14 @@ for i in tqdm(range(len(chamber.index))[::-1]):
         chamber.at[i,'cond_c'] = cond_c
         chamber.at[i,'visc_c'] = visc_c
         chamber.at[i,'u_c'] = chamber.at[i,'mdot_chan']/(chamber.at[i,'rho_c']*(chamber.at[i,'A_chan']/(1000**2))) # Coolant Velo - m/s
-        chamber.at[i,'t_transit'] = chamber.at[i,'dx']/(chamber.at[i,'u_c']*1000)
+        chamber.at[i,'t_transit'] = chamber.at[i,'s']/(chamber.at[i,'u_c']*1000)
         chamber.at[i,'Re_c'] = (chamber.at[i,'rho_c']*(chamber.at[i,'D_hyd']/1000)*chamber.at[i,'u_c'])/chamber.at[i,'visc_c']  # Coolant Re; convert D_hyd to m
         chamber.at[i,'Pr_c'] = (chamber.at[i,'cp_c']*chamber.at[i,'visc_c'])/chamber.at[i,'cond_c']
         chamber.at[i,'f_darcy'] = (0.79*np.log(chamber.at[i,'Re_c']) - 1.64)**(-2) # Petukhov correlation; Incorpera pg.490
+        # calculate darcy-weisbach pressure drop
+        # https://en.wikipedia.org/wiki/Darcy%E2%80%93Weisbach_equation
+
+
         chamber.at[i,'Nu_c'] = gnielinski_calc(chamber.at[i,'f_darcy'], chamber.at[i,'Re_c'], chamber.at[i,'Pr_c'])
         chamber.at[i,'h_c'] = chamber.at[i, 'Nu_c'] * chamber.at[i, 'cond_c'] / (chamber.at[i, 'D_hyd']/1000) # Coolant h_c; convert D_hyd to mm
 
@@ -191,6 +199,7 @@ for i in tqdm(range(len(chamber.index))[::-1]):
         chamber.at[i, 'dT_c'] = (chamber.at[i,'q_tot']*chamber.at[i,'A_w_segment']/(1000.0**2))/(mdot_fuel_ideal*chamber.at[i,'cp_c'])
         chamber.at[i, 'T_c_e'] = chamber.at[i, 'T_c_i'] + chamber.at[i, 'dT_c']
         chamber.at[i - 1, 'T_c_i'] = chamber.at[i, 'T_c_e']
+        chamber.at[i, 'dP_c'] = (chamber.at[i,'s']/1000 * (chamber.at[i,'f_darcy']*(chamber.at[i,'rho_c']/2)*((chamber.at[i,'u_c']**2)/(chamber.at[i,'D_hyd']/1000))))/10**5 # dP in Bar
 
         if DEBUG:
             print(root)
@@ -201,8 +210,20 @@ for i in tqdm(range(len(chamber.index))[::-1]):
         for key in keys:
             chamber.at[i,key] = chamber.at[i+1,key]
 
+# Invert Coolant Pressure Vectors to match flow direction
+chamber.at[0,'P_c_e'] = P_f_inj
+for i in range(len(chamber.index)-1):
+    chamber.at[i,'P_c_i'] = chamber.at[i,'P_c_e'] + chamber.at[i,'dP_c']
+    chamber.at[i+1,'P_c_e'] = chamber.at[i,'P_c_i']
+
 plot_chamber_thermo(chamber)
-print(f'Chamber OD w/Cooling = {np.round(np.max(chamber["r_outer"]),2)*2} [mm]')
+print(f'Chamber OD w/Cooling = {np.round(np.max(chamber["r_outer"]),2)*2} [mm]\n')
+print(f'Regen Inlet Pressure = {chamber.at[i_n,"P_c_e"]} [BarA]')
+print(f'Injector Inlet Pressure = {chamber.at[0,"P_c_e"]} [BarA]\n')
+print(f'Regen Stiffness = {100*(chamber.at[i_n,"P_c_e"] - chamber.at[0,"P_c_e"])/chamber.at[0,"P_c_e"]} [%]\n')
+print(f'Injector Inlet Fuel Props:')
+print(f'rho_c = {chamber.at[0,"rho_c"]} [kg/s]')
+print(f'visc_c = {chamber.at[0,"visc_c"]} [Pa.s]')
 chamber.to_csv(os.path.join(os.getcwd(),'output','chamber_final.csv'))
 
 
