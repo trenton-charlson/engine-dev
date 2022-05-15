@@ -30,7 +30,7 @@ Pe = 1.01325 #bar
 thrust = 3000 #newton
 # 2250 -> ~500lbf
 # 4500 -> ~1000 lbf
-MR = 1.9
+MR = 2.1
 eta_cstar = 0.9 # guess
 pressure_ratio = Pe/Pc
 print(f'pressure_ratio = {pressure_ratio}')
