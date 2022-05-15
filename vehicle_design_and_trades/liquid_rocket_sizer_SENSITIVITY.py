@@ -7,6 +7,8 @@ future: perform trajectory sim & iterative analysis
 # std packages
 import copy
 import matplotlib.pyplot as plt
+from general_tools import matplotlib_config
+matplotlib_config._matplotlib_init_()
 import itertools
 markers = itertools.cycle((',', '+', '.', 'o', '*'))
 import os
@@ -30,7 +32,7 @@ PRINT_RESULTS = False
 PC = 21.0 # bars
 P_exit = 1.01325 #bars
 #thrust = 3000 # newton
-MR = 1.7 # mixture ratio
+MR = 1.9 # mixture ratio
 ffc_pct = 0.15 # % film coolant mass flow
 oxidizer = engine_sizing_run.propellant('LOX')
 fuel = engine_sizing_run.propellant('Kerosene')
@@ -39,17 +41,19 @@ fac_CR = 8.0 # face contraction ratio
 DRY_MASS_GROWTH_FACTOR = 1.30  # spoof for future mass growth
 
 #burntime = 18.0 # seconds
-P_p_BOL = np.round(4500/BAR2PSI,2) # beginning bottle pressure
+P_p_BOL = np.round(3000/BAR2PSI,2) # beginning bottle pressure
 PRESSGASS = 'N2'
 
 ############################################################################################################
 """ SWEEP PARAMS IN FOR LOOP"""
 thrust_sweep = np.linspace(2000,4000,num=5)
-bt_sweep = np.linspace(10.0,20.0,num=8)
+bt_sweep = np.linspace(6.0,20.0,num=6)
 i = 0 #index
 out = pd.DataFrame()
+alt_targ = 5000
+alt_margin = 1000
 
-fig1, (ax1, ax2) = plt.subplots(nrows=2,ncols=1,figsize=(9,12),sharex=True)
+fig1, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2,ncols=2,figsize=(16,9))
 
 for thrust in thrust_sweep:
     for burntime in bt_sweep:
@@ -173,28 +177,47 @@ for thrust in thrust_sweep:
         out.at[i, 'bt'] = burntime
         out.at[i,'h'] = alt_max
         out.at[i,'m_wet'] = m_wet
+        out.at[i,'m_prop'] = m_propellant_i
+        out.at[i,'V_p_req'] = V_p_BOL
         i = i+1
 
     # Plot const thrust curve for study output
     ax1.plot(out[out['t'] == thrust]['bt'], out[out['t'] == thrust]['h'],label=f'F = {thrust} N')
     ax2.plot(out[out['t'] == thrust]['bt'], out[out['t'] == thrust]['m_wet'],label=f'F = {thrust} N')
+    ax3.plot(out[out['t'] == thrust]['bt'], out[out['t'] == thrust]['V_p_req'],label=f'F = {thrust} N')
 
+bt_req = np.round([np.interp((alt_targ+alt_margin),out[out['t'] == thrust]['h'],out[out['t'] == thrust]['bt']) for thrust in thrust_sweep],2)
+vp_req = np.round([np.interp((alt_targ+alt_margin),out[out['t'] == thrust]['h'],out[out['t'] == thrust]['V_p_req']) for thrust in thrust_sweep],2)
+mprop_req = np.round([np.interp((alt_targ+alt_margin),out[out['t'] == thrust]['h'],out[out['t'] == thrust]['m_prop']) for thrust in thrust_sweep],2)
+ax4.plot(thrust_sweep,bt_req,label='Thrust vs. Burn Time')
+ax41 = ax4.twinx()
+#ax41.plot(thrust_sweep,vp_req,label='Thrust vs. Pressurant Volume')
+ax41.plot(thrust_sweep,mprop_req,label='Thrust vs. Prop Mass Req.')
 ## FORMAT PLOT ##
-alt_targ = 5000
-alt_margin = 1000
 ax1.axhline(y=alt_targ, c='k', ls='--', label="Altitude Targ")
 ax1.axhline(y=alt_targ+alt_margin, c='r', ls='--', label=f'Altitude Targ + {alt_margin} m.o.s.')
 ax1.legend()
 ax1.grid()
 ax2.legend()
 ax2.grid()
-ax2.set_xlabel('burn_time [s]')
+ax3.legend()
+ax3.grid()
+ax4.legend()
+ax41.legend()
+ax4.grid()
+ax3.set_xlabel('burn_time [s]')
+ax4.set_xlabel('Thrust [N]')
+ax4.set_ylabel('Burn Time [s]')
+ax41.set_ylabel('Volume, Mass - [L],[kg]')
 ax1.set_ylabel('alt [m]')
 ax2.set_ylabel('wet mass [kg]')
-fig1.suptitle('Burn Time vs Thrust Trade\n'
+ax3.set_ylabel('pressurant volume [L]')
+fig1.suptitle(f'Burn Time vs Thrust Trade - MR={MR}\n'
               f'{thrust_sweep[0]}N - {thrust_sweep[-1]}N Thrust\n'
-              f'{bt_sweep[0]}s - {bt_sweep[-1]}s Burn Time\n'
+              f'Req Burn Times for h={alt_targ+alt_margin} => {bt_req} [s]\n'
               f'Tanks: {tank_MATL}\n'
-              f'Airframe: {skin_MATL}')
+              f'Airframe: {skin_MATL}\n'
+              f'Pressurant: {PRESSGASS}')
+fig1.tight_layout()
 output_fn = f'sensitivity_study_{thrust_sweep[0]}N-{thrust_sweep[-1]}N_{bt_sweep[0]}s-{bt_sweep[-1]}s_{tank_MATL}_{skin_MATL}.png'
 plt.savefig(os.path.join(outputdir,output_fn))

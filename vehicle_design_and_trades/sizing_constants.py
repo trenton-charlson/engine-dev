@@ -15,7 +15,7 @@ rho_f = 800.0 # kg/m**3
 # Pressurant
 T_p_LOAD = 300 #K - pressurant load temp
 press_margin = 5.0 #bar - WAG - need to anchor to avail Kv
-vol_sweep = np.linspace(10.0,60.0,num=3)/1000 # liters -> m**3; should only need 3x pts for linear interps
+vol_sweep = np.linspace(10.0,120.0,num=4)/1000 # liters -> m**3; should only need 3x pts for linear interps
 
 # Pressure Ladder #
 f_inj_stiff = 20.0 # percent
@@ -76,8 +76,8 @@ hack in
 
 """
 skin_MATL = '6in_Fiberglass'
-skin_ID = 191 # mm
-skin_OD = 195.78 # mm
+skin_ID = 152.4 # mm
+skin_OD = 156.72 # mm
 skin_LW = 2.26 # kg/m
 
 A_cs = np.pi*(skin_OD/(2*1000))**2

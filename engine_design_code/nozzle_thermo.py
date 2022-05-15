@@ -130,7 +130,7 @@ def plot_chamber_thermo(chamber):
     ax2.plot(chamber['x'], chamber['T_wc'], c='cyan',lw=2,label='T_wc')
     ax21 = ax2.twinx()
     ax21.plot(chamber['x'], chamber['dT_c']/chamber['s'], c='magenta', lw=2, label='dT_c/dx')
-    ax21.plot(chamber['x'], chamber['dP_c']/chamber['s'], c='green', lw=2, label='dP_c/dx')
+    ax21.plot(chamber['x'], 10*chamber['dP_c']/chamber['s'], c='green', lw=2, label='dP_c/dx')
 
     ax3.plot(chamber['x'], chamber['mach'], c='r', lw=2, label='Mach Number - [-]')
     ax31 = ax3.twinx()
@@ -188,7 +188,7 @@ def plot_chamber_thermo(chamber):
     ax4.set_ylabel('Channel Geo - [mm]')
     ax41.set_ylabel('Channel Count - [n]')
     ax2.set_ylabel(f'Regen Temps - [K]')
-    ax21.set_ylabel(f'Coolant dT/dx., dP/dx - [K/mm], [BarA/mm]')
+    ax21.set_ylabel(f'Coolant dT/dx., dP/dx - [K/mm], [BarA/CM]')
     ax3.set_ylabel(f'Regen Geo - [mm]')
     ax6.set_ylabel(f'Fin Thickness - [mm]')
     ax61.set_ylabel(f'Velocity, Pressure - [m/s], [BarA]')

@@ -22,7 +22,7 @@ PLOT_TRAJECTORY = True
 PRINT_RESULTS = True
 
 ## TOP LEVEL PARAMS ##
-PC = 20.0 # bars
+PC = 21.0 # bars
 P_exit = 1.01325 #bars
 thrust = 3000 # newton
 MR = 1.7 # mixture ratio
@@ -31,11 +31,11 @@ oxidizer = engine_sizing_run.propellant('LOX')
 fuel = engine_sizing_run.propellant('Kerosene')
 fac_CR = 8.0 # face contraction ratio
 
-DRY_MASS_GROWTH_FACTOR = 1.30  # spoof for future mass growth
+DRY_MASS_GROWTH_FACTOR = 1.50  # spoof for future mass growth
 
-burntime = 16.0 # seconds
+burntime = 12.0 # seconds
 P_p_BOL = np.round(4500/BAR2PSI,2) # beginning bottle pressure
-PRESSGASS = 'He'
+PRESSGASS = 'N2'
 
 # Run high level engine sizer to extract flowrates
 eng, T_c, T_t, R_specific, k, opt_expansion, v_e_ideal = \
@@ -116,9 +116,10 @@ if PRINT_RESULTS:
           f'VEHICLE SIZING INPUTS:'
           f'\n##########################################################\n\n'
           f'>> Thrust = {thrust} [N] - ({np.round(thrust*NEWTON2LBF)} [lbf])\n'
-          f'>> Chamber Pressure = {PC} [bar] - ({np.round(PC*BAR2PSI)} [psia]) -- MR = {MR}\n'
+          f'>> Chamber Pressure = {PC} [BarA] - ({np.round(PC*BAR2PSI)} [psia]) -- MR = {MR}\n'
           f'>> Burn Time = {burntime} [s]\n'
           f'>> Pressurant: {PRESSGASS}\n'
+          f'>> Starting Bottle Pressure: {P_p_BOL} [BarA] - {P_p_BOL*BAR2PSI} [psia]\n'
           f'>> Vehicle Diameter: {skin_OD} [mm] - ({np.round(skin_OD/25.4,3)} [in])\n'
           f'>> DRY MASS MULT = {DRY_MASS_GROWTH_FACTOR} [-]')
 
@@ -126,7 +127,11 @@ if PRINT_RESULTS:
           f'VEHICLE SIZING OUTPUTS:'
           f'\n##########################################################\n\n'
           f'>> Propellant Mass = {m_propellant_i} [kg]\n'
+          f'>> Fuel Tank Pressure: {P_f_tank} [BarA]\n'
+          f'>> Oxygen Tank Pressure: {P_o_tank} [BarA]\n'
           f'>> Pressurant Mass = {m_p_i} [kg]\n'
+          f'>> Pressurant Volume = {V_p_BOL} [L]\n'
+          f'>> End of Life Bottle Pressure: {P_p_EOL} [BarA]\n'
           f'>> Structural Mass = {np.round(m_struct,2)} [kg]\n'
           f'>> TOTAL LIFTOFF MASS = {np.round(m_wet,2)} [kg]\n'
           f'>> TOTAL DRY MASS = {np.round(m_dry,2)} [kg]\n'
