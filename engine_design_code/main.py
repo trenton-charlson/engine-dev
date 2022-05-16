@@ -5,6 +5,8 @@ author: tcharlson
 """
 
 # Public Modules
+from datetime import datetime
+startTime = datetime.now()
 import copy
 import os
 import numpy as np
@@ -236,5 +238,9 @@ print(f'visc_c = {chamber.at[0,"visc_c"]} [Pa.s]')
 
 # Save final chamber output case
 chamber.to_csv(os.path.join(os.getcwd(),'output','chamber_final.csv'))
+
+# Time Benchmark
+print(f'\nScript Runtime: {datetime.now() - startTime} [s]')
+
 
 

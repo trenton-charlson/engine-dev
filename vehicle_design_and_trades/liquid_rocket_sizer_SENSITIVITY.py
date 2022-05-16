@@ -280,5 +280,5 @@ fig1.suptitle(f'Burn Time vs Thrust Trade - MR={MR}\n'
 fig1.tight_layout()
 output_fn = f'sensitivity_study_{thrust_sweep[0]}N-{thrust_sweep[-1]}N_{bt_sweep[0]}s-{bt_sweep[-1]}s_{tank_MATL}_{skin_MATL}.png'
 plt.savefig(os.path.join(outputdir,output_fn))
-print(f'Script Runtime: {datetime.now() - startTime} [s]')
+print(f'\nScript Runtime: {datetime.now() - startTime} [s]')
 
