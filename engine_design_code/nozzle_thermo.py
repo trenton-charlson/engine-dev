@@ -113,7 +113,7 @@ def load_regen_geometry(chamber,fn):
 
     return chamber
 
-def plot_chamber_thermo(chamber):
+def plot_chamber_thermo(chamber,eng):
     i_n = chamber.index[-1] #grab max index
 
     fig1, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(nrows=3, ncols=2, figsize=(16,9), sharex=True)
@@ -192,12 +192,16 @@ def plot_chamber_thermo(chamber):
     ax3.set_ylabel(f'Regen Geo - [mm]')
     ax6.set_ylabel(f'Fin Thickness - [mm]')
     ax61.set_ylabel(f'Velocity, Pressure - [m/s], [BarA]')
-    fig1.suptitle(f'Regen Cooling Properties\n'
-                  f'Max Coolant Temp: {np.round(max(chamber["T_c_i"]),2)} [K]\n'
+    regen_dP = np.round(max(chamber["P_c_e"])-min(chamber["P_c_e"]),2)
+    pct_stiffness = regen_dP/max(chamber["P_c_e"])
+    fig1.suptitle(f'Regen Cooling Properties - PC: {eng.Pc} [BarA]; MR: {eng.MR} [-]; {eng.thrust} [N]; e_c: {eng.fac_CR} [-]\n'
+                  f'Coolant Flowrate: {np.round(chamber.at[0,"mdot_chan"]*chamber.at[0,"n_chan"],3)} [kg/s]\n'
+                  f'Max Coolant Temp: {np.round(max(chamber["T_c_i"]),2)} [K]  -  Coolant dT: {np.round(max(chamber["T_c_i"]) - min(chamber["T_c_i"]),2)} [K]\n'
                   f'Max Wall Temp: {np.round(max(chamber["T_wg"]),2)} [K]\n'
-                  f'Transit Time: {np.round(np.sum(chamber["t_transit"]),4)*1000} [ms]')
-    plt.tight_layout
-    return
+                  f'Transit Time: {np.round(np.sum(chamber["t_transit"])*1000,2)} [ms]  -  Transit Dist: {np.round(np.sum(chamber["s"]),2)} [mm]\n'
+                  f'Regen dP = {regen_dP} [BarA] - {np.round(pct_stiffness*100,1)}%')
+    fig1.tight_layout
+    return fig1
 
 
 

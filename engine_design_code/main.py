@@ -30,7 +30,7 @@ Pe = 1.01325 #bar
 thrust = 3000 #newton
 # 2250 -> ~500lbf
 # 4500 -> ~1000 lbf
-MR = 2.1
+MR = 1.7
 eta_cstar = 0.9 # guess
 pressure_ratio = Pe/Pc
 print(f'pressure_ratio = {pressure_ratio}')
@@ -39,11 +39,13 @@ print(f'Pc/Pe = {Pc/Pe}')
 ffc_pct = 0.15 # % FFC Mass fraction
 
 ### GEOMETRIC PARAMS ###
-fac_CR = 8.0 #contraction ratio
+fac_CR = 7.0 #contraction ratio
 chamber_ha = 30.0 #degrees, chamber half angle
 nozzle_ha = 15.0 #degrees, nozzle half angle; conical nozzle
 L_star = 1.15 #meters - http://mae-nas.eng.usu.edu/MAE_5540_Web/propulsion_systems/section6/section.6.1.pdf guess for now
 npts = 100 #number of points to define each contour section
+CHANNEL_CONFIG = 'regen_cfg.yaml' # config file name for regen parameters
+
 
 f_inj_stiff = 20.0 # percent
 P_f_inj = (1+(f_inj_stiff/100))*Pc
@@ -100,27 +102,27 @@ chamber_raw,i_t = define_contour(chamber_obj, L_star, nozzle_ha, chamber_ha, PLO
 chamber = copy.deepcopy(chamber_raw) # save raw copy of chamber data for export
 chamber_raw.to_csv(os.path.join(os.getcwd(), 'output', 'chamber_raw.csv'))
 
-print('\n#### RAW CHAMBER GEOMETRY EXPORTED - NOW PERFORMING REGEN ANALYSIS ON MODIFIED CHAMBER FILE ####')
+print('\n#### RAW CHAMBER GEOMETRY EXPORTED ####')
 # seed heat transfer analysis
+# At the moment, am not super confident in the CEA output for transport props, does not seem to match CEA web unlike P/T props
+# Running case in CEA Web App and manually inputting the below
 mu = 0.91*0.0001 # millipoise -> Pa.s
 Cp = 3.25*10**3 # J/kg.K (need to convert)
 Pr = 0.50 # avg from CEA output with lower bias
-cstar = 1710 # m/s - CEA output
 #mod with eta cstar
 RC_throat = 0.015 # radius of curvature at throat - spoof 15mm for now
 
-cond_w = 370 # copper, W/m.K
+cond_w = 350 # copper, W/m.K - conservatively low bound
 C = 0.026 # Bartz constant
 
 # compute 4x bartz constants which do not vary over nozzle
 b1 = (C/((D_t_mm/1000)**0.2)) # first constant in bartz correlation C/Dt**0.2 - diameter correlation
 b2 = ((mu**0.2)*Cp)/(Pr**0.6) # 2nd constant - mu**0.2.Cp/Pr**0.6 - transport props
-b3 = (Pc_pa/(cstar*eta_cstar))**0.8 # 3rd constant - Pc correlation
+b3 = (Pc_pa/(cstar_ideal))**0.8 # 3rd constant - Pc correlation - use ideal C* to be conservative
 b4 = ((D_t_mm/1000)/RC_throat)**0.1 # 4th constant - throat curvature correction
 bartz_mult = b1*b2*b3*b4
 
-chamber = chamber_thermo_calcs(chamber, k, R_specific, T_c, Pc)
-CHANNEL_CONFIG = 'regen_cfg.yaml'
+chamber = chamber_thermo_calcs(chamber, k, R_specific, T_c, Pc) # populate flow props vs station - isentropic
 chamber = load_regen_geometry(chamber, CHANNEL_CONFIG)
 
 chamber['A_chan'] = chamber['w_chan'] * chamber['d_chan'] # mm**2
@@ -171,10 +173,6 @@ for i in tqdm(range(len(chamber.index))[::-1]):
         chamber.at[i,'Re_c'] = (chamber.at[i,'rho_c']*(chamber.at[i,'D_hyd']/1000)*chamber.at[i,'u_c'])/chamber.at[i,'visc_c']  # Coolant Re; convert D_hyd to m
         chamber.at[i,'Pr_c'] = (chamber.at[i,'cp_c']*chamber.at[i,'visc_c'])/chamber.at[i,'cond_c']
         chamber.at[i,'f_darcy'] = (0.79*np.log(chamber.at[i,'Re_c']) - 1.64)**(-2) # Petukhov correlation; Incorpera pg.490
-        # calculate darcy-weisbach pressure drop
-        # https://en.wikipedia.org/wiki/Darcy%E2%80%93Weisbach_equation
-
-
         chamber.at[i,'Nu_c'] = gnielinski_calc(chamber.at[i,'f_darcy'], chamber.at[i,'Re_c'], chamber.at[i,'Pr_c'])
         chamber.at[i,'h_c'] = chamber.at[i, 'Nu_c'] * chamber.at[i, 'cond_c'] / (chamber.at[i, 'D_hyd']/1000) # Coolant h_c; convert D_hyd to mm
 
@@ -199,6 +197,8 @@ for i in tqdm(range(len(chamber.index))[::-1]):
         chamber.at[i, 'dT_c'] = (chamber.at[i,'q_tot']*chamber.at[i,'A_w_segment']/(1000.0**2))/(mdot_fuel_ideal*chamber.at[i,'cp_c'])
         chamber.at[i, 'T_c_e'] = chamber.at[i, 'T_c_i'] + chamber.at[i, 'dT_c']
         chamber.at[i - 1, 'T_c_i'] = chamber.at[i, 'T_c_e']
+        # calculate darcy-weisbach pressure drop
+        # https://en.wikipedia.org/wiki/Darcy%E2%80%93Weisbach_equation
         chamber.at[i, 'dP_c'] = (chamber.at[i,'s']/1000 * (chamber.at[i,'f_darcy']*(chamber.at[i,'rho_c']/2)*((chamber.at[i,'u_c']**2)/(chamber.at[i,'D_hyd']/1000))))/10**5 # dP in Bar
 
         if DEBUG:
@@ -206,9 +206,10 @@ for i in tqdm(range(len(chamber.index))[::-1]):
 
     else:
         # populate final station with non-NAN values
+        # i = 0
         keys = [key for key in chamber.keys() if key not in ['x', 'r', 'theta', 'eps', 'regime']]
         for key in keys:
-            chamber.at[i,key] = chamber.at[i+1,key]
+            chamber.at[0, key] = chamber.at[1, key]
 
 # Invert Coolant Pressure Vectors to match flow direction
 chamber.at[0,'P_c_e'] = P_f_inj
@@ -216,14 +217,24 @@ for i in range(len(chamber.index)-1):
     chamber.at[i,'P_c_i'] = chamber.at[i,'P_c_e'] + chamber.at[i,'dP_c']
     chamber.at[i+1,'P_c_e'] = chamber.at[i,'P_c_i']
 
-plot_chamber_thermo(chamber)
-print(f'Chamber OD w/Cooling = {np.round(np.max(chamber["r_outer"]),2)*2} [mm]\n')
+# Plot thermo outputs
+fig = plot_chamber_thermo(chamber,eng)
+fig.tight_layout()
+fig.show()
+
+chamber_OD_w_cooling = np.round(np.max(chamber["r_outer"]),2)*2
+
+# Console Output
+print(f'Chamber OD w/Cooling = {chamber_OD_w_cooling} [mm] ({chamber_OD_w_cooling/25.4} [in])\n')
 print(f'Regen Inlet Pressure = {chamber.at[i_n,"P_c_e"]} [BarA]')
 print(f'Injector Inlet Pressure = {chamber.at[0,"P_c_e"]} [BarA]\n')
 print(f'Regen Stiffness = {100*(chamber.at[i_n,"P_c_e"] - chamber.at[0,"P_c_e"])/chamber.at[0,"P_c_e"]} [%]\n')
 print(f'Injector Inlet Fuel Props:')
+print(f'T_c = {chamber.at[0,"T_c_e"]} [K]')
 print(f'rho_c = {chamber.at[0,"rho_c"]} [kg/s]')
 print(f'visc_c = {chamber.at[0,"visc_c"]} [Pa.s]')
+
+# Save final chamber output case
 chamber.to_csv(os.path.join(os.getcwd(),'output','chamber_final.csv'))
 
 

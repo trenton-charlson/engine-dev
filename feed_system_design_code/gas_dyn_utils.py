@@ -80,8 +80,8 @@ def regulator_blowdown_single_species(P_start, T_start, P_end, P_reg, q_req, V_t
 
 
 def regulator_blowdown_rocket(P_start,T_start,P_end,
-                              P_reg_ox, q_req_ox,
-                              P_reg_fuel, q_reg_fuel,
+                              P_reg_ox, q_req_ox, CF_ox,
+                              P_reg_fuel, q_reg_fuel, CF_fu,
                               V_tank,
                               GAS,
                               ts=0.1, t_max=100.0, BAR=10**5, K = 1.4,
@@ -108,7 +108,7 @@ def regulator_blowdown_rocket(P_start,T_start,P_end,
         # downstream density based on T_d and P_reg
         rho_d_ox = CP.PropsSI('D','T',T_d_ox, 'P', P_reg_ox*BAR, GAS)
         # gas mass flowrate
-        mdot_ox = rho_d_ox * q_req_ox
+        mdot_ox = rho_d_ox * q_req_ox * CF_ox # add in hacky collapse factor
 
         ### Fuel Side ###
         # downstream temp from isenthalpic throttling
@@ -116,7 +116,7 @@ def regulator_blowdown_rocket(P_start,T_start,P_end,
         # downstream density based on T_d and P_reg
         rho_d_f = CP.PropsSI('D', 'T', T_d_f, 'P', P_reg_fuel * BAR, GAS)
         # gas mass flowrate
-        mdot_f = rho_d_f * q_reg_fuel
+        mdot_f = rho_d_f * q_reg_fuel * CF_fu
 
         mdot_tot = mdot_f+mdot_ox
 
@@ -151,10 +151,11 @@ def regulator_blowdown_rocket(P_start,T_start,P_end,
     return out, t_blowdown, mass_i, mass_f
 
 
-def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
-                               P_ot,q_dot_oto,
-                               P_ft,q_dot_fto,
+def blowdown_sensitivity_study(vol, p_start, T_bulk, P_end,
+                               P_ot, q_dot_oto, CF_ox,
+                               P_ft, q_dot_fto, CF_fuel,
                                burntime,
+                               pressurant,
                                PLOT=True,PRINT=False):
 
     if PRINT:
@@ -179,19 +180,19 @@ def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
         for v in tqdm(vol):
             # calc for nitrogen
             _, time, mass_i, mass_f = regulator_blowdown_rocket(p, T_bulk, P_end,
-                                                      P_ot, q_dot_oto,
-                                                      P_ft, q_dot_fto,
-                                                      v,
-                                                      'Nitrogen')
+                                                                P_ot, q_dot_oto, CF_ox,
+                                                                P_ft, q_dot_fto, CF_fuel,
+                                                                v,
+                                                                'Nitrogen')
             N2_df.at[v,'time'] = time
             N2_df.at[v,'mass_i'] = mass_i
             N2_df.at[v,'mass_f'] = mass_f
             # calc for Helium
             _, time, mass_i, mass_f = regulator_blowdown_rocket(p, T_bulk, P_end,
-                                                      P_ot, q_dot_oto,
-                                                      P_ft, q_dot_fto,
-                                                      v,
-                                                      'Helium')
+                                                                P_ot, q_dot_oto, CF_ox,
+                                                                P_ft, q_dot_fto, CF_fuel,
+                                                                v,
+                                                                'Helium')
             He_df.at[v, 'time'] = time
             He_df.at[v, 'mass_i'] = mass_i
             He_df.at[v, 'mass_f'] = mass_f
@@ -245,4 +246,7 @@ def blowdown_sensitivity_study(vol,p_start,T_bulk,P_end,
                       f'p = {p_start} [bar]')
         plt.tight_layout
 
-    return out_df
+    if pressurant == 'N2':
+        return N2_df
+    elif pressurant == 'He':
+        return He_df

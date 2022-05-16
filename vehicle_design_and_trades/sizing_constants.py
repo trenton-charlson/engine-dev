@@ -15,7 +15,7 @@ rho_f = 800.0 # kg/m**3
 # Pressurant
 T_p_LOAD = 300 #K - pressurant load temp
 press_margin = 5.0 #bar - WAG - need to anchor to avail Kv
-vol_sweep = np.linspace(10.0,120.0,num=4)/1000 # liters -> m**3; should only need 3x pts for linear interps
+vol_sweep = np.linspace(10.0,250.0,num=10)/1000 # liters -> m**3; should only need 3x pts for linear interps
 
 # Pressure Ladder #
 f_inj_stiff = 20.0 # percent
@@ -117,4 +117,6 @@ tank_LW = 5.201
 tank_AInternal = np.pi*(tank_ID/(1000*2))**2 # m**2
 
 ullage_frac_o = 1.3
+CF_ox = 1.4  # hack
 ullage_frac_f = 1.15
+CF_fuel = 1.05  # hack

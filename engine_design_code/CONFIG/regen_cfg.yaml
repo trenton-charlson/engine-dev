@@ -1,14 +1,14 @@
 barrel:
   start_x: 0.0
-  end_x: 121.77
+  end_x: 138.38
   n_chan: 90
   w_chan: 1.0
-  d_chan: 0.75
+  d_chan: 1.0
   t_wall: 1.5
 nozl:
-  start_x: 121.77
-  end_x: 266.74
+  start_x: 138.38
+  end_x: 350.74
   n_chan: 90
   w_chan: 0.5
-  d_chan: 0.75
+  d_chan: 1.0
   t_wall: 1.5
